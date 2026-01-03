@@ -1,0 +1,25 @@
+# Backend
+**/bin/
+**/obj/
+**/.vs/
+**/appsettings.Development.json
+
+# Frontend
+**/node_modules/
+**/dist/
+**/.env
+**/.env.local
+
+# IDE
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
