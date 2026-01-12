@@ -11,9 +11,9 @@ var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
     // Producción: PostgreSQL (Supabase/Render)
-    // Convertir formato postgres:// a formato Npgsql si es necesario
+    // Convertir formato postgres:// o postgresql:// a formato Npgsql
     var connStr = databaseUrl;
-    if (databaseUrl.StartsWith("postgres://"))
+    if (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://"))
     {
         var uri = new Uri(databaseUrl);
         var userInfo = uri.UserInfo.Split(':');
