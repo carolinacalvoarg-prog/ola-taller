@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OlaInfrastructure.Data;
 
@@ -10,43 +11,14 @@ using OlaInfrastructure.Data;
 namespace OlaInfrastructure.Migrations
 {
     [DbContext(typeof(OlaDbContext))]
-    partial class OlaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260111173247_AddNotasToAlumno")]
+    partial class AddNotasToAlumno
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
-
-            modelBuilder.Entity("OlaCore.Models.Actividad", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("AlumnoId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TurnoId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AlumnoId");
-
-                    b.HasIndex("Fecha");
-
-                    b.HasIndex("TurnoId");
-
-                    b.ToTable("Actividades");
-                });
 
             modelBuilder.Entity("OlaCore.Models.Alumno", b =>
                 {
@@ -61,9 +33,6 @@ namespace OlaInfrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("ClasesPendientesRecuperar")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -123,42 +92,6 @@ namespace OlaInfrastructure.Migrations
                     b.HasIndex("AlumnoId", "TurnoId", "Fecha");
 
                     b.ToTable("Asistencias");
-                });
-
-            modelBuilder.Entity("OlaCore.Models.ConfiguracionSistema", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Clave")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Descripcion")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Valor")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Clave")
-                        .IsUnique();
-
-                    b.ToTable("ConfiguracionesSistema");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Clave = "HorasAnticipacionCancelacion",
-                            Descripcion = "Horas de anticipacion minimas para cancelar una clase",
-                            Valor = "24"
-                        });
                 });
 
             modelBuilder.Entity("OlaCore.Models.Inscripcion", b =>
@@ -335,25 +268,6 @@ namespace OlaInfrastructure.Migrations
                     b.HasIndex("ProfesorId");
 
                     b.ToTable("Usuarios");
-                });
-
-            modelBuilder.Entity("OlaCore.Models.Actividad", b =>
-                {
-                    b.HasOne("OlaCore.Models.Alumno", "Alumno")
-                        .WithMany()
-                        .HasForeignKey("AlumnoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OlaCore.Models.Turno", "Turno")
-                        .WithMany()
-                        .HasForeignKey("TurnoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Alumno");
-
-                    b.Navigation("Turno");
                 });
 
             modelBuilder.Entity("OlaCore.Models.Asistencia", b =>

@@ -29,13 +29,23 @@ public class AlumnosController : ControllerBase
 
     // GET: api/Alumnos/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Alumno>> GetAlumno(int id)
+    public async Task<ActionResult<object>> GetAlumno(int id)
     {
         var alumno = await _context.Alumnos
-            .Include(a => a.Inscripciones)
-                .ThenInclude(i => i.Turno)
-            .Include(a => a.Pagos)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .Where(a => a.Id == id)
+            .Select(a => new
+            {
+                a.Id,
+                a.Nombre,
+                a.Apellido,
+                a.Email,
+                a.Telefono,
+                a.Notas,
+                a.FechaRegistro,
+                a.Activo,
+                a.ClasesPendientesRecuperar
+            })
+            .FirstOrDefaultAsync();
 
         if (alumno == null)
         {
@@ -53,6 +63,18 @@ public class AlumnosController : ControllerBase
         alumno.Activo = true;
 
         _context.Alumnos.Add(alumno);
+        await _context.SaveChangesAsync();
+
+        // Crear Usuario automaticamente
+        var usuario = new Usuario
+        {
+            Email = alumno.Email,
+            PasswordHash = AuthController.GetDefaultPasswordHash(),
+            Rol = "Alumno",
+            AlumnoId = alumno.Id,
+            Activo = true
+        };
+        _context.Usuarios.Add(usuario);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetAlumno), new { id = alumno.Id }, alumno);
@@ -99,6 +121,14 @@ public class AlumnosController : ControllerBase
         }
 
         alumno.Activo = false;
+
+        // Desactivar Usuario asociado
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.AlumnoId == id);
+        if (usuario != null)
+        {
+            usuario.Activo = false;
+        }
+
         await _context.SaveChangesAsync();
 
         return NoContent();

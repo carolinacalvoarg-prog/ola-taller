@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: olataller-api
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # Se configura manualmente con la URL de Supabase
+      - key: ALLOWED_ORIGINS
+        sync: false  # Se configura con la URL de Vercel

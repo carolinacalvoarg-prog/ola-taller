@@ -7,8 +7,10 @@ public class Alumno
     public string Apellido { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Telefono { get; set; }
+    public string? Notas { get; set; }
     public DateTime FechaRegistro { get; set; }
     public bool Activo { get; set; }
+    public int ClasesPendientesRecuperar { get; set; } = 0;
     
     // Relaciones
     public ICollection<Inscripcion> Inscripciones { get; set; } = new List<Inscripcion>();

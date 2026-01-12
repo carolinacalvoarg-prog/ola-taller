@@ -16,6 +16,8 @@ public class OlaDbContext : DbContext
     public DbSet<Asistencia> Asistencias { get; set; }
     public DbSet<Pago> Pagos { get; set; }
     public DbSet<Usuario> Usuarios { get; set; }
+    public DbSet<ConfiguracionSistema> ConfiguracionesSistema { get; set; }
+    public DbSet<Actividad> Actividades { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +109,40 @@ public class OlaDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.ProfesorId)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configuración de ConfiguracionSistema
+        modelBuilder.Entity<ConfiguracionSistema>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Clave).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Clave).IsUnique();
+            entity.Property(e => e.Valor).IsRequired().HasMaxLength(500);
+
+            // Seed data con valor por defecto de horas de anticipacion
+            entity.HasData(new ConfiguracionSistema
+            {
+                Id = 1,
+                Clave = "HorasAnticipacionCancelacion",
+                Valor = "24",
+                Descripcion = "Horas de anticipacion minimas para cancelar una clase"
+            });
+        });
+
+        // Configuracion de Actividad
+        modelBuilder.Entity<Actividad>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Tipo).IsRequired().HasMaxLength(50);
+            entity.HasOne(e => e.Alumno)
+                  .WithMany()
+                  .HasForeignKey(e => e.AlumnoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Turno)
+                  .WithMany()
+                  .HasForeignKey(e => e.TurnoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.Fecha);
         });
     }
 }

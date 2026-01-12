@@ -34,10 +34,36 @@ public class AsistenciasController : ControllerBase
     {
         foreach (var asistencia in asistencias)
         {
-            asistencia.FechaRegistro = DateTime.UtcNow;
+            // Verificar si ya existe una asistencia para este alumno, turno y fecha
+            var existente = await _context.Asistencias
+                .FirstOrDefaultAsync(a => a.AlumnoId == asistencia.AlumnoId &&
+                                          a.TurnoId == asistencia.TurnoId &&
+                                          a.Fecha.Date == asistencia.Fecha.Date);
+
+            if (existente != null)
+            {
+                // Actualizar existente
+                existente.Presente = asistencia.Presente;
+                existente.Observaciones = asistencia.Observaciones;
+                existente.FechaRegistro = DateTime.UtcNow;
+            }
+            else
+            {
+                // Crear nueva
+                asistencia.FechaRegistro = DateTime.UtcNow;
+                _context.Asistencias.Add(asistencia);
+            }
+
+            // Registrar actividad
+            _context.Actividades.Add(new Actividad
+            {
+                Tipo = asistencia.Presente ? "asistencia" : "inasistencia",
+                AlumnoId = asistencia.AlumnoId,
+                TurnoId = asistencia.TurnoId,
+                Fecha = DateTime.UtcNow
+            });
         }
 
-        _context.Asistencias.AddRange(asistencias);
         await _context.SaveChangesAsync();
 
         return Ok(new { mensaje = "Asistencias registradas correctamente" });
@@ -100,8 +126,8 @@ public class AsistenciasController : ControllerBase
             .CountAsync();
 
         var totalAusentes = totalAsistencias - totalPresentes;
-        var porcentajeAsistencia = totalAsistencias > 0 
-            ? (totalPresentes * 100.0 / totalAsistencias) 
+        var porcentajeAsistencia = totalAsistencias > 0
+            ? (totalPresentes * 100.0 / totalAsistencias)
             : 0;
 
         return Ok(new
@@ -111,5 +137,27 @@ public class AsistenciasController : ControllerBase
             Ausentes = totalAusentes,
             PorcentajeAsistencia = Math.Round(porcentajeAsistencia, 2)
         });
+    }
+
+    // GET: api/Asistencias/historial/turno/5
+    [HttpGet("historial/turno/{turnoId}")]
+    public async Task<ActionResult<IEnumerable<object>>> GetHistorialAsistenciasByTurno(int turnoId)
+    {
+        var unMesAtras = DateTime.UtcNow.AddMonths(-1);
+
+        var historial = await _context.Asistencias
+            .Where(a => a.TurnoId == turnoId && a.Fecha >= unMesAtras)
+            .GroupBy(a => a.Fecha.Date)
+            .Select(g => new
+            {
+                Fecha = g.Key,
+                Presentes = g.Count(a => a.Presente),
+                Ausentes = g.Count(a => !a.Presente),
+                Total = g.Count()
+            })
+            .OrderByDescending(x => x.Fecha)
+            .ToListAsync();
+
+        return Ok(historial);
     }
 }

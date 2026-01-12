@@ -41,11 +41,50 @@ public class TurnosController : ControllerBase
                 CuposOcupados = t.Inscripciones.Count(i => i.Activa),
                 CuposDisponibles = t.CuposMaximos - t.Inscripciones.Count(i => i.Activa)
             })
-            .OrderBy(t => t.DiaSemana)
-            .ThenBy(t => t.HoraInicio)
             .ToListAsync();
 
-        return Ok(turnos);
+        // Ordenar en memoria porque SQLite no soporta ORDER BY con TimeSpan
+        var turnosOrdenados = turnos
+            .OrderBy(t => t.DiaSemana)
+            .ThenBy(t => t.HoraInicio)
+            .ToList();
+
+        return Ok(turnosOrdenados);
+    }
+
+    // GET: api/Turnos/profesor/5
+    [HttpGet("profesor/{profesorId}")]
+    public async Task<ActionResult<IEnumerable<object>>> GetTurnosByProfesor(int profesorId)
+    {
+        var turnos = await _context.Turnos
+            .Include(t => t.Inscripciones)
+                .ThenInclude(i => i.Alumno)
+            .Where(t => t.Activo && t.ProfesorId == profesorId)
+            .Select(t => new
+            {
+                t.Id,
+                t.DiaSemana,
+                t.HoraInicio,
+                t.HoraFin,
+                t.CuposMaximos,
+                Alumnos = t.Inscripciones
+                    .Where(i => i.Activa && i.Alumno != null)
+                    .Select(i => new
+                    {
+                        i.Alumno!.Id,
+                        i.Alumno.Nombre,
+                        i.Alumno.Apellido
+                    })
+                    .ToList()
+            })
+            .ToListAsync();
+
+        var turnosOrdenados = turnos
+            .OrderBy(t => t.DiaSemana)
+            .ThenBy(t => t.HoraInicio)
+            .ToList();
+
+        return Ok(turnosOrdenados);
     }
 
     // GET: api/Turnos/5

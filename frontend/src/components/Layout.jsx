@@ -10,7 +10,7 @@ function Layout() {
       backgroundColor: colors.gray[50],
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      <Header userName="Usuario" />
+      <Header />
       <Navigation />
       <main style={{ 
         maxWidth: '1200px', 
