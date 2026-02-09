@@ -58,8 +58,9 @@ public class InscripcionesController : ControllerBase
         // Primer día de la semana que coincide con el turno (hoy o después)
         var diaActual = (int)actual.DayOfWeek;
         var diasSumar = (diaSemana - diaActual + 7) % 7;
-        // Si es hoy, incluir solo si la clase aún no empezó
-        if (diasSumar == 0 && DateTime.UtcNow.TimeOfDay >= turno.HoraInicio)
+        // Si es hoy, incluir solo si la clase aún no terminó (hora Argentina UTC-3)
+        var ahoraArgentina = DateTime.UtcNow.AddHours(-3);
+        if (diasSumar == 0 && ahoraArgentina.TimeOfDay >= turno.HoraFin)
             diasSumar = 7;
         actual = actual.AddDays(diasSumar);
 
