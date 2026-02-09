@@ -20,6 +20,7 @@ function Alumnos() {
     email: '',
     telefono: '',
     fechaNacimiento: '',
+    clasesPendientesRecuperar: 0,
   });
   const [toast, setToast] = useState(null);
 
@@ -113,7 +114,7 @@ function Alumnos() {
   };
 
   const resetForm = () => {
-    setFormData({ nombre: '', apellido: '', email: '', telefono: '', fechaNacimiento: '' });
+    setFormData({ nombre: '', apellido: '', email: '', telefono: '', fechaNacimiento: '', clasesPendientesRecuperar: 0 });
     setEditingAlumno(null);
     setShowForm(false);
   };
@@ -126,6 +127,7 @@ function Alumnos() {
       email: alumno.email,
       telefono: alumno.telefono || '',
       fechaNacimiento: alumno.fechaNacimiento ? alumno.fechaNacimiento.slice(0, 10) : '',
+      clasesPendientesRecuperar: alumno.clasesPendientesRecuperar || 0,
     });
     setShowForm(true);
   };
@@ -141,6 +143,7 @@ function Alumnos() {
           email: formData.email,
           telefono: formData.telefono,
           fechaNacimiento: formData.fechaNacimiento || null,
+          clasesPendientesRecuperar: parseInt(formData.clasesPendientesRecuperar) || 0,
           activo: true
         });
         showToast('Alumno actualizado exitosamente', 'success');
@@ -324,7 +327,7 @@ function Alumnos() {
               resetForm();
             } else {
               setEditingAlumno(null);
-              setFormData({ nombre: '', apellido: '', email: '', telefono: '', fechaNacimiento: '' });
+              setFormData({ nombre: '', apellido: '', email: '', telefono: '', fechaNacimiento: '', clasesPendientesRecuperar: 0 });
               setShowForm(true);
             }
           }}
@@ -445,6 +448,18 @@ function Alumnos() {
                   style={inputStyle}
                 />
               </div>
+              {editingAlumno && (
+                <div>
+                  <label style={labelStyle}>Clases pendientes de recuperar</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.clasesPendientesRecuperar}
+                    onChange={(e) => setFormData({ ...formData, clasesPendientesRecuperar: e.target.value })}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
