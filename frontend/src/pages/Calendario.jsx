@@ -152,10 +152,7 @@ function Calendario() {
   };
 
   const diasSinClaseSet = new Set(
-    diasSinClase.map(d => {
-      const f = new Date(d.fecha);
-      return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
-    })
+    diasSinClase.map(d => d.fecha.slice(0, 10))
   );
 
   const getClasesDelDia = (fecha) => {
@@ -166,8 +163,7 @@ function Calendario() {
 
   const handleToggleDiaSinClase = async (fechaStr) => {
     if (!esAdmin) return;
-    const fecha = new Date(fechaStr + 'T12:00:00');
-    const existente = diasSinClase.find(d => new Date(d.fecha).toISOString().slice(0, 10) === fechaStr);
+    const existente = diasSinClase.find(d => d.fecha.slice(0, 10) === fechaStr);
     setTogglingDay(fechaStr);
     try {
       if (existente) {
@@ -175,7 +171,7 @@ function Calendario() {
         setToastAndClose('Se quitó el día sin clase');
       } else {
         await diasSinClaseService.create({
-          fecha: fecha.toISOString(),
+          fecha: fechaStr + 'T12:00:00Z',
           motivo: ''
         });
         setToastAndClose('Se marcó como día sin clase');
@@ -193,7 +189,8 @@ function Calendario() {
   const ultimoDia = new Date(anio, mes, 0);
   const diasEnMes = ultimoDia.getDate();
   const inicioSemana = primerDia.getDay();
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoy = new Date();
+  const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
   const celdas = [];
   for (let i = 0; i < inicioSemana; i++) {
