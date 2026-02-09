@@ -1,4 +1,4 @@
-import { Users, UserCheck, Settings } from 'lucide-react';
+import { Users, UserCheck, Settings, Calendar } from 'lucide-react';
 import { colors } from '../styles/colors';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ function Navigation() {
 
   const allTabs = [
     { id: 'alumno', path: '/portal-alumno', icon: Users, label: 'Portal Alumno', roles: ['Admin', 'Alumno'] },
+    { id: 'calendario', path: '/calendario', icon: Calendar, label: 'Calendario', roles: ['Admin', 'Alumno'] },
     { id: 'profesor', path: '/portal-profesor', icon: UserCheck, label: 'Portal Profesor', roles: ['Admin', 'Profesor'] },
     { id: 'admin', path: '/administracion', icon: Settings, label: 'Administracion', roles: ['Admin'] }
   ];

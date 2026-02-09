@@ -21,7 +21,9 @@ function AlumnoDetalle() {
     apellido: '',
     email: '',
     telefono: '',
-    notas: ''
+    fechaNacimiento: '',
+    notas: '',
+    clasesPendientesRecuperar: 0
   });
   const [inscripciones, setInscripciones] = useState([]);
   const [actividades, setActividades] = useState([]);
@@ -58,7 +60,9 @@ function AlumnoDetalle() {
         apellido: alumnoData.apellido || '',
         email: alumnoData.email || '',
         telefono: alumnoData.telefono || '',
-        notas: alumnoData.notas || ''
+        fechaNacimiento: alumnoData.fechaNacimiento ? alumnoData.fechaNacimiento.slice(0, 10) : '',
+        notas: alumnoData.notas || '',
+        clasesPendientesRecuperar: alumnoData.clasesPendientesRecuperar ?? 0
       });
       setInscripciones(inscripcionesRes.data || []);
     } catch (error) {
@@ -132,7 +136,13 @@ function AlumnoDetalle() {
     try {
       await alumnosService.update(id, {
         id: parseInt(id),
-        ...formData,
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        email: formData.email,
+        telefono: formData.telefono,
+        fechaNacimiento: formData.fechaNacimiento || null,
+        notas: formData.notas,
+        clasesPendientesRecuperar: formData.clasesPendientesRecuperar,
         activo: true
       });
       // Actualizar el estado del alumno con los nuevos datos
@@ -154,7 +164,9 @@ function AlumnoDetalle() {
       apellido: alumno.apellido || '',
       email: alumno.email || '',
       telefono: alumno.telefono || '',
-      notas: alumno.notas || ''
+      fechaNacimiento: alumno.fechaNacimiento ? alumno.fechaNacimiento.slice(0, 10) : '',
+      notas: alumno.notas || '',
+      clasesPendientesRecuperar: alumno.clasesPendientesRecuperar ?? 0
     });
     setIsEditing(false);
   };
@@ -369,6 +381,25 @@ function AlumnoDetalle() {
                     style={inputStyle}
                   />
                 </div>
+                <div>
+                  <label style={labelStyle}>Fecha de nacimiento</label>
+                  <input
+                    type="date"
+                    value={formData.fechaNacimiento}
+                    onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Clases pendientes de recuperar</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.clasesPendientesRecuperar}
+                    onChange={(e) => setFormData({ ...formData, clasesPendientesRecuperar: parseInt(e.target.value, 10) || 0 })}
+                    style={inputStyle}
+                  />
+                </div>
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
@@ -460,6 +491,18 @@ function AlumnoDetalle() {
                   <label style={labelStyle}>Teléfono</label>
                   <div style={{ fontSize: '0.875rem', color: colors.gray[900] }}>
                     {alumno.telefono || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Fecha de nacimiento</label>
+                  <div style={{ fontSize: '0.875rem', color: colors.gray[900] }}>
+                    {alumno.fechaNacimiento ? new Date(alumno.fechaNacimiento).toLocaleDateString('es-AR') : '-'}
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Clases pendientes de recuperar</label>
+                  <div style={{ fontSize: '0.875rem', color: colors.gray[900], fontWeight: '600' }}>
+                    {alumno.clasesPendientesRecuperar ?? 0}
                   </div>
                 </div>
               </div>

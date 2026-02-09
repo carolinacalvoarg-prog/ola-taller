@@ -104,7 +104,7 @@
 ## Verificacion
 
 1. Abrir tu app en Vercel
-2. Intentar login con: `admin@olataller.com` / `123456`
+2. Intentar login con: `admin@olataller.com` / `olataller`
 3. Si funciona, el deploy esta completo!
 
 ---

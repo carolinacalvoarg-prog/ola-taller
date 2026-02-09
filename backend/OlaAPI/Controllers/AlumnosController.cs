@@ -40,6 +40,7 @@ public class AlumnosController : ControllerBase
                 a.Apellido,
                 a.Email,
                 a.Telefono,
+                a.FechaNacimiento,
                 a.Notas,
                 a.FechaRegistro,
                 a.Activo,

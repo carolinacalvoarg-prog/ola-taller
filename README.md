@@ -64,7 +64,7 @@ La aplicacion estara disponible en:
 
 | Rol | Email | Password |
 |-----|-------|----------|
-| Admin | admin@olataller.com | 123456 |
+| Admin | admin@olataller.com | olataller |
 
 ## Deploy
 

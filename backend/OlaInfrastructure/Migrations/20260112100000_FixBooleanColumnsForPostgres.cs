@@ -10,9 +10,10 @@ namespace OlaInfrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Convertir columnas INTEGER a BOOLEAN en PostgreSQL
-            // Usamos SQL directo porque EF Core no puede cambiar tipos automáticamente
-
+            // Solo ejecutar en PostgreSQL: convertir INTEGER a BOOLEAN.
+            // En SQLite no es necesario (ya usa 0/1 y EF los mapea a bool).
+            if (!migrationBuilder.ActiveProvider.Contains("Sqlite"))
+            {
             // Alumnos.Activo
             migrationBuilder.Sql(@"
                 ALTER TABLE ""Alumnos""
@@ -54,11 +55,14 @@ namespace OlaInfrastructure.Migrations
                 ALTER COLUMN ""Presente"" TYPE boolean
                 USING ""Presente""::integer::boolean;
             ");
+            }
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            if (!migrationBuilder.ActiveProvider.Contains("Sqlite"))
+            {
             // Revertir a INTEGER si es necesario
             migrationBuilder.Sql(@"
                 ALTER TABLE ""Alumnos""
@@ -95,6 +99,7 @@ namespace OlaInfrastructure.Migrations
                 ALTER COLUMN ""Presente"" TYPE integer
                 USING ""Presente""::boolean::integer;
             ");
+            }
         }
     }
 }

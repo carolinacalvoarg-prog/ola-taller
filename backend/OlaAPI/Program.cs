@@ -61,16 +61,48 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente en producción
+// Aplicar migraciones automáticamente (desarrollo y producción)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<OlaDbContext>();
-    if (!string.IsNullOrEmpty(databaseUrl))
+    context.Database.Migrate();
+    // Asegurar columna FechaNacimiento en SQLite (por si la migración no se aplicó)
+    try
     {
-        // En producción, aplicar migraciones
-        context.Database.Migrate();
-        Console.WriteLine("Database migrations applied");
+        context.Database.ExecuteSqlRaw("ALTER TABLE Alumnos ADD COLUMN FechaNacimiento TEXT;");
+        Console.WriteLine("Column FechaNacimiento added to Alumnos");
     }
+    catch (Exception)
+    {
+        // En PostgreSQL la sintaxis es distinta; en SQLite falla si la columna ya existe. Ignorar.
+    }
+    // Crear tablas DiasSinClase y AusenciasProgramadas en SQLite si no existen
+    try
+    {
+        context.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS DiasSinClase (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Fecha TEXT NOT NULL,
+                Motivo TEXT
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_DiasSinClase_Fecha ON DiasSinClase(Fecha);
+        ");
+        context.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS AusenciasProgramadas (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                InscripcionId INTEGER NOT NULL,
+                Fecha TEXT NOT NULL,
+                FOREIGN KEY (InscripcionId) REFERENCES Inscripciones(Id) ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_AusenciasProgramadas_InscripcionId_Fecha ON AusenciasProgramadas(InscripcionId, Fecha);
+        ");
+        Console.WriteLine("Tables DiasSinClase and AusenciasProgramadas ensured");
+    }
+    catch (Exception)
+    {
+        // En PostgreSQL las tablas las crea la migración; en SQLite si ya existen, ignorar.
+    }
+    Console.WriteLine("Database migrations applied");
 }
 
 // Configure the HTTP request pipeline.

@@ -9,6 +9,7 @@ import Administracion from './pages/Administracion';
 import Alumnos from './pages/Alumnos';
 import AlumnoDetalle from './pages/AlumnoDetalle';
 import Turnos from './pages/Turnos';
+import Calendario from './pages/Calendario';
 
 function App() {
   return (
@@ -62,6 +63,12 @@ function App() {
             <Route path="turnos" element={
               <ProtectedRoute allowedRoles={['Admin']}>
                 <Turnos />
+              </ProtectedRoute>
+            } />
+
+            <Route path="calendario" element={
+              <ProtectedRoute allowedRoles={['Admin', 'Alumno']}>
+                <Calendario />
               </ProtectedRoute>
             } />
           </Route>

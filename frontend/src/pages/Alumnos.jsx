@@ -19,6 +19,7 @@ function Alumnos() {
     apellido: '',
     email: '',
     telefono: '',
+    fechaNacimiento: '',
   });
   const [toast, setToast] = useState(null);
 
@@ -112,7 +113,7 @@ function Alumnos() {
   };
 
   const resetForm = () => {
-    setFormData({ nombre: '', apellido: '', email: '', telefono: '' });
+    setFormData({ nombre: '', apellido: '', email: '', telefono: '', fechaNacimiento: '' });
     setEditingAlumno(null);
     setShowForm(false);
   };
@@ -124,6 +125,7 @@ function Alumnos() {
       apellido: alumno.apellido,
       email: alumno.email,
       telefono: alumno.telefono || '',
+      fechaNacimiento: alumno.fechaNacimiento ? alumno.fechaNacimiento.slice(0, 10) : '',
     });
     setShowForm(true);
   };
@@ -134,12 +136,22 @@ function Alumnos() {
       if (editingAlumno) {
         await alumnosService.update(editingAlumno.id, {
           id: editingAlumno.id,
-          ...formData,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          email: formData.email,
+          telefono: formData.telefono,
+          fechaNacimiento: formData.fechaNacimiento || null,
           activo: true
         });
         showToast('Alumno actualizado exitosamente', 'success');
       } else {
-        await alumnosService.create(formData);
+        await alumnosService.create({
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          email: formData.email,
+          telefono: formData.telefono,
+          fechaNacimiento: formData.fechaNacimiento || null
+        });
         showToast('Alumno creado exitosamente', 'success');
       }
       resetForm();
@@ -312,7 +324,7 @@ function Alumnos() {
               resetForm();
             } else {
               setEditingAlumno(null);
-              setFormData({ nombre: '', apellido: '', email: '', telefono: '' });
+              setFormData({ nombre: '', apellido: '', email: '', telefono: '', fechaNacimiento: '' });
               setShowForm(true);
             }
           }}
@@ -421,6 +433,15 @@ function Alumnos() {
                   type="tel"
                   value={formData.telefono}
                   onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  value={formData.fechaNacimiento}
+                  onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
                   style={inputStyle}
                 />
               </div>

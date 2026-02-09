@@ -14,7 +14,7 @@ function PortalAlumno() {
   const [loading, setLoading] = useState(true);
   const [horasAnticipacion, setHorasAnticipacion] = useState(24);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [cancelando, setCancelando] = useState(null);
+  const [cancelandoN, setCancelandoN] = useState(null);
   const [inscribiendo, setInscribiendo] = useState(null);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ function PortalAlumno() {
       const [alumnoRes, inscripcionesRes, turnosRes, configRes] = await Promise.all([
         alumnosService.getById(user.alumnoId),
         inscripcionesService.getByAlumno(user.alumnoId),
-        turnosService.getAll(),
+        turnosService.getAllConFechas(),
         configuracionService.get('HorasAnticipacionCancelacion')
       ]);
 
@@ -57,42 +57,18 @@ function PortalAlumno() {
     return dias[dia];
   };
 
-  // Calcular la proxima fecha de una clase basada en el dia de la semana
-  const getProximaFechaClase = (diaSemana, horaInicio) => {
-    const ahora = new Date();
-    const diaActual = ahora.getDay();
-    let diasHastaClase = diaSemana - diaActual;
-
-    if (diasHastaClase < 0) {
-      diasHastaClase += 7;
-    } else if (diasHastaClase === 0) {
-      // Es hoy, verificar si ya paso la hora
-      const [hora, minutos] = horaInicio.split(':').map(Number);
-      const horaClase = new Date(ahora);
-      horaClase.setHours(hora, minutos, 0, 0);
-
-      if (ahora >= horaClase) {
-        diasHastaClase = 7; // Ya paso, es la proxima semana
-      }
-    }
-
-    const proximaFecha = new Date(ahora);
-    proximaFecha.setDate(ahora.getDate() + diasHastaClase);
-    const [hora, minutos] = horaInicio.split(':').map(Number);
-    proximaFecha.setHours(hora, minutos, 0, 0);
-
-    return proximaFecha;
+  // Parsear fecha del backend como local (evita desfase UTC)
+  const parseFechaBackend = (fechaStr) => {
+    const solo = fechaStr.slice(0, 10);
+    return new Date(solo + 'T00:00:00');
   };
 
-  // Verificar si faltan suficientes horas para cancelar
-  const puedeCancelar = (diaSemana, horaInicio) => {
-    const proximaFecha = getProximaFechaClase(diaSemana, horaInicio);
-    const ahora = new Date();
-    const horasRestantes = (proximaFecha - ahora) / (1000 * 60 * 60);
-    return horasRestantes >= horasAnticipacion;
+  const formatearFechaCorta = (fecha) => {
+    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    return `${dias[fecha.getDay()]} ${fecha.getDate()}/${fecha.getMonth() + 1}`;
   };
 
-  // Obtener la proxima clase (la mas cercana)
+  // Obtener la proxima clase (la mas cercana) usando datos del backend
   const getProximaClase = () => {
     if (inscripciones.length === 0) return null;
 
@@ -100,34 +76,32 @@ function PortalAlumno() {
     let fechaMasCercana = null;
 
     inscripciones.forEach(insc => {
-      if (insc.turno) {
-        const fecha = getProximaFechaClase(insc.turno.diaSemana, insc.turno.horaInicio);
-        if (!fechaMasCercana || fecha < fechaMasCercana) {
-          fechaMasCercana = fecha;
-          proximaClase = { ...insc, proximaFecha: fecha };
-        }
+      if (!insc.proximasFechas || insc.proximasFechas.length === 0) return;
+      const fecha = parseFechaBackend(insc.proximasFechas[0]);
+      if (insc.turno?.horaInicio) {
+        const [h, m] = insc.turno.horaInicio.split(':').map(Number);
+        fecha.setHours(h, m, 0, 0);
+      }
+      if (!fechaMasCercana || fecha < fechaMasCercana) {
+        fechaMasCercana = fecha;
+        proximaClase = { ...insc, proximaFecha: fecha };
       }
     });
 
     return proximaClase;
   };
 
-  const handleCancelarClase = async (inscripcionId, diaSemana, horaInicio) => {
-    if (!puedeCancelar(diaSemana, horaInicio)) {
-      showToast(`No puedes cancelar con menos de ${horasAnticipacion} horas de anticipacion`, 'error');
-      return;
-    }
-
+  const handleCancelarClase = async (inscripcionId, fecha) => {
     try {
-      setCancelando(inscripcionId);
-      await inscripcionesService.cancelar(inscripcionId);
+      setCancelandoN({ inscripcionId, cantidad: 1 });
+      await inscripcionesService.cancelarProximas(inscripcionId, 1, fecha);
       showToast('Clase cancelada. Se agrego una clase a recuperar.', 'success');
       fetchData();
     } catch (error) {
       console.error('Error al cancelar:', error);
-      showToast('Error al cancelar la clase', 'error');
+      showToast(error.response?.data?.message || 'Error al cancelar la clase', 'error');
     } finally {
-      setCancelando(null);
+      setCancelandoN(null);
     }
   };
 
@@ -172,11 +146,17 @@ function PortalAlumno() {
 
   const proximaClase = getProximaClase();
 
-  // Turnos disponibles para recuperar (excluir los turnos donde ya esta inscripto)
-  const turnosDisponibles = turnos.filter(turno => {
-    const yaInscripto = inscripciones.some(insc => insc.turnoId === turno.id);
-    return !yaInscripto && (turno.cuposDisponibles || 0) > 0;
+  // Set de "turnoId-fecha" donde el alumno ya está inscripto
+  const inscriptoPorTurnoYFecha = new Set();
+  inscripciones.forEach(insc => {
+    if (!insc.proximasFechas) return;
+    insc.proximasFechas.forEach(f => {
+      inscriptoPorTurnoYFecha.add(`${insc.turnoId}-${f.slice(0, 10)}`);
+    });
   });
+
+  // Turnos con cupos (el filtro por fecha se hace en el render)
+  const turnosConCupos = turnos.filter(turno => (turno.cuposDisponibles || 0) > 0);
 
   if (loading) {
     return (
@@ -282,54 +262,46 @@ function PortalAlumno() {
             </div>
           </Card>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-            {inscripciones.map((insc) => {
-              const puedeAccionar = insc.turno && puedeCancelar(insc.turno.diaSemana, insc.turno.horaInicio);
-              const proximaFecha = insc.turno ? getProximaFechaClase(insc.turno.diaSemana, insc.turno.horaInicio) : null;
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+            {inscripciones.flatMap((insc) => {
+              if (!insc.turno || !insc.proximasFechas) return [];
+              return insc.proximasFechas.map((f) => ({
+                insc, fecha: parseFechaBackend(f), fechaStr: f
+              }));
+            }).sort((a, b) => a.fecha - b.fecha).slice(0, 5).map(({ insc, fecha, fechaStr }, idx) => {
+              const ahora = new Date();
+              const horasRestantes = (fecha - ahora) / (1000 * 60 * 60);
+              const puedeAccionar = horasRestantes >= horasAnticipacion;
 
               return (
-                <Card key={insc.id}>
+                <Card key={`${insc.id}-${idx}`}>
                   <div style={{
                     padding: '1rem',
                     borderLeft: `4px solid ${colors.primary}`
                   }}>
-                    <div style={{ fontWeight: '600', color: colors.gray[900], marginBottom: '0.5rem' }}>
-                      {insc.turno ? getDiaSemana(insc.turno.diaSemana) : 'N/A'}
+                    <div style={{ fontWeight: '600', color: colors.gray[900], marginBottom: '0.25rem' }}>
+                      {formatearFechaCorta(fecha)}
                     </div>
-                    <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                      {insc.turno ? `${insc.turno.horaInicio} - ${insc.turno.horaFin}` : ''}
+                    <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                      {insc.turno.horaInicio} - {insc.turno.horaFin}
                     </div>
-                    {proximaFecha && (
-                      <div style={{
+                    <button
+                      onClick={() => handleCancelarClase(insc.id, fechaStr)}
+                      disabled={!puedeAccionar}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        backgroundColor: puedeAccionar ? colors.error : colors.gray[300],
+                        color: colors.white,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: puedeAccionar ? 'pointer' : 'not-allowed',
                         fontSize: '0.75rem',
-                        color: colors.gray[500],
-                        marginBottom: '1rem'
-                      }}>
-                        Proxima: {formatearFecha(proximaFecha)}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => handleCancelarClase(insc.id, insc.turno?.diaSemana, insc.turno?.horaInicio)}
-                        disabled={!puedeAccionar || cancelando === insc.id}
-                        style={{
-                          flex: 1,
-                          padding: '0.5rem',
-                          backgroundColor: puedeAccionar ? colors.error : colors.gray[300],
-                          color: colors.white,
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: puedeAccionar ? 'pointer' : 'not-allowed',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          opacity: cancelando === insc.id ? 0.7 : 1
-                        }}
-                        title={!puedeAccionar ? `Requiere ${horasAnticipacion}hs de anticipacion` : ''}
-                      >
-                        {cancelando === insc.id ? 'Cancelando...' : 'Cancelar'}
-                      </button>
-                    </div>
+                        fontWeight: '500'
+                      }}
+                    >
+                      Cancelar clase
+                    </button>
                     {!puedeAccionar && (
                       <div style={{
                         marginTop: '0.5rem',
@@ -379,7 +351,14 @@ function PortalAlumno() {
           </div>
         )}
 
-        {turnosDisponibles.length === 0 ? (
+        {(() => {
+          const items = turnosConCupos.flatMap((turno) => {
+            if (!turno.proximasFechas) return [];
+            return turno.proximasFechas
+              .filter(f => !inscriptoPorTurnoYFecha.has(`${turno.id}-${f.slice(0, 10)}`))
+              .map((f) => ({ turno, fecha: parseFechaBackend(f) }));
+          }).sort((a, b) => a.fecha - b.fecha).slice(0, 5);
+          return items.length === 0 ? (
           <Card>
             <div style={{ textAlign: 'center', padding: '2rem', color: colors.gray[500] }}>
               No hay turnos con cupos disponibles en este momento
@@ -387,16 +366,16 @@ function PortalAlumno() {
           </Card>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {turnosDisponibles.map((turno) => {
+            {items.map(({ turno, fecha }, idx) => {
               const tieneClasesPendientes = (alumnoData?.clasesPendientesRecuperar || 0) > 0;
               return (
-                <Card key={turno.id}>
+                <Card key={`${turno.id}-${idx}`}>
                   <div style={{
                     padding: '1rem',
                     borderLeft: `4px solid ${tieneClasesPendientes ? colors.success : colors.gray[300]}`
                   }}>
-                    <div style={{ fontWeight: '600', color: colors.gray[900], marginBottom: '0.5rem' }}>
-                      {getDiaSemana(turno.diaSemana)}
+                    <div style={{ fontWeight: '600', color: colors.gray[900], marginBottom: '0.25rem' }}>
+                      {formatearFechaCorta(fecha)}
                     </div>
                     <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                       {turno.horaInicio} - {turno.horaFin}
@@ -405,7 +384,7 @@ function PortalAlumno() {
                       fontSize: '0.75rem',
                       color: turno.cuposDisponibles > 3 ? colors.success : colors.warning,
                       fontWeight: '500',
-                      marginBottom: '1rem'
+                      marginBottom: '0.75rem'
                     }}>
                       {turno.cuposDisponibles || 0} cupos disponibles
                     </div>
@@ -432,7 +411,8 @@ function PortalAlumno() {
               );
             })}
           </div>
-        )}
+        );
+        })()}
       </div>
 
       {toast.show && (

@@ -6,6 +6,7 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
   },
 });
 
@@ -21,6 +22,7 @@ export const alumnosService = {
 // Servicios de Turnos
 export const turnosService = {
   getAll: () => api.get('/turnos'),
+  getAllConFechas: () => api.get('/turnos?incluirFechas=true'),
   getById: (id) => api.get(`/turnos/${id}`),
   getByProfesor: (profesorId) => api.get(`/turnos/profesor/${profesorId}`),
   create: (turno) => api.post('/turnos', turno),
@@ -34,6 +36,7 @@ export const inscripcionesService = {
   getByAlumno: (alumnoId) => api.get(`/inscripciones/alumno/${alumnoId}`),
   getByTurno: (turnoId) => api.get(`/inscripciones/turno/${turnoId}`),
   cancelar: (id) => api.delete(`/inscripciones/${id}`),
+  cancelarProximas: (inscripcionId, cantidad, fecha) => api.post('/inscripciones/cancelar-proximas', { inscripcionId, cantidad, ...(fecha && { fecha }) }),
   inscribirRecuperacion: (inscripcion) => api.post('/inscripciones/recuperacion', inscripcion),
   getActividades: (limit = 10) => api.get(`/inscripciones/actividades?limit=${limit}`),
   getActividadesByAlumno: (alumnoId, { limit = 10, tipo = '', fechaDesde = '', fechaHasta = '' } = {}) => {
@@ -67,6 +70,13 @@ export const configuracionService = {
   getAll: () => api.get('/configuracion'),
   get: (clave) => api.get(`/configuracion/${clave}`),
   update: (clave, valor) => api.put(`/configuracion/${clave}`, { valor }),
+};
+
+// Servicios de Días sin clase (feriados, etc.)
+export const diasSinClaseService = {
+  getByMes: (anio, mes) => api.get(`/diassinclase?anio=${anio}&mes=${mes}`),
+  create: (dia) => api.post('/diassinclase', dia),
+  delete: (id) => api.delete(`/diassinclase/${id}`),
 };
 
 export default api;

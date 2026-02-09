@@ -18,7 +18,7 @@ public class TurnosController : ControllerBase
 
     // GET: api/Turnos
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<object>>> GetTurnos()
+    public async Task<ActionResult<IEnumerable<object>>> GetTurnos([FromQuery] bool incluirFechas = false)
     {
         var turnos = await _context.Turnos
             .Include(t => t.Profesor)
@@ -49,7 +49,54 @@ public class TurnosController : ControllerBase
             .ThenBy(t => t.HoraInicio)
             .ToList();
 
-        return Ok(turnosOrdenados);
+        if (!incluirFechas)
+            return Ok(turnosOrdenados);
+
+        // Calcular próximas 4 fechas por turno, excluyendo días sin clase
+        var hoy = DateTime.UtcNow.Date;
+        var hasta = hoy.AddMonths(3);
+        var diasSinClaseSet = new HashSet<DateTime>(
+            await _context.DiasSinClase
+                .Where(d => d.Fecha >= hoy && d.Fecha < hasta)
+                .Select(d => d.Fecha.Date)
+                .ToListAsync()
+        );
+
+        var resultado = turnosOrdenados.Select(t =>
+        {
+            var diaSemana = (int)t.DiaSemana;
+            var actual = hoy;
+            var diaActual = (int)actual.DayOfWeek;
+            var diasSumar = (diaSemana - diaActual + 7) % 7;
+            // Si es hoy, incluir solo si la clase aún no empezó
+            if (diasSumar == 0 && DateTime.UtcNow.TimeOfDay >= t.HoraInicio)
+                diasSumar = 7;
+            actual = actual.AddDays(diasSumar);
+
+            var fechas = new List<DateTime>();
+            while (fechas.Count < 4 && actual < hasta)
+            {
+                if (!diasSinClaseSet.Contains(actual))
+                    fechas.Add(actual);
+                actual = actual.AddDays(7);
+            }
+
+            return new
+            {
+                t.Id,
+                t.DiaSemana,
+                t.HoraInicio,
+                t.HoraFin,
+                t.CuposMaximos,
+                t.Activo,
+                t.Profesor,
+                t.CuposOcupados,
+                t.CuposDisponibles,
+                ProximasFechas = fechas
+            };
+        }).ToList();
+
+        return Ok(resultado);
     }
 
     // GET: api/Turnos/profesor/5

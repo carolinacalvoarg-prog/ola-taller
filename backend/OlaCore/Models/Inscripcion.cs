@@ -11,4 +11,5 @@ public class Inscripcion
     // Relaciones
     public Alumno? Alumno { get; set; }
     public Turno? Turno { get; set; }
+    public ICollection<AusenciaProgramada> AusenciasProgramadas { get; set; } = new List<AusenciaProgramada>();
 }

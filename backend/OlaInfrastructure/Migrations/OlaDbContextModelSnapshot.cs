@@ -78,6 +78,9 @@ namespace OlaInfrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<DateTime?>("FechaNacimiento")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("FechaRegistro")
                         .HasColumnType("timestamp with time zone");
 
@@ -200,6 +203,53 @@ namespace OlaInfrastructure.Migrations
                     b.HasIndex("AlumnoId", "TurnoId");
 
                     b.ToTable("Inscripciones");
+                });
+
+            modelBuilder.Entity("OlaCore.Models.AusenciaProgramada", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("InscripcionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InscripcionId");
+
+                    b.HasIndex("InscripcionId", "Fecha")
+                        .IsUnique();
+
+                    b.ToTable("AusenciasProgramadas");
+                });
+
+            modelBuilder.Entity("OlaCore.Models.DiaSinClase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha")
+                        .IsUnique();
+
+                    b.ToTable("DiasSinClase");
                 });
 
             modelBuilder.Entity("OlaCore.Models.Pago", b =>
@@ -397,6 +447,17 @@ namespace OlaInfrastructure.Migrations
                     b.Navigation("Turno");
                 });
 
+            modelBuilder.Entity("OlaCore.Models.AusenciaProgramada", b =>
+                {
+                    b.HasOne("OlaCore.Models.Inscripcion", "Inscripcion")
+                        .WithMany("AusenciasProgramadas")
+                        .HasForeignKey("InscripcionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inscripcion");
+                });
+
             modelBuilder.Entity("OlaCore.Models.Inscripcion", b =>
                 {
                     b.HasOne("OlaCore.Models.Alumno", "Alumno")
@@ -412,6 +473,8 @@ namespace OlaInfrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Alumno");
+
+                    b.Navigation("AusenciasProgramadas");
 
                     b.Navigation("Turno");
                 });
