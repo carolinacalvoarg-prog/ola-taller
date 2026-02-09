@@ -1,37 +1,42 @@
-# 📋 DOCUMENTACIÓN DEL PROYECTO - ELA TALLER
+# DOCUMENTACION DEL PROYECTO - ELA TALLER
 
-**Fecha última actualización:** 26 de Diciembre de 2024  
-**Estado:** Backend instalado ✅ | Frontend actualizado ✅ | En desarrollo 🚧
+**Fecha ultima actualizacion:** 9 de Febrero de 2026
+**Estado:** Backend completo | Frontend completo | Autenticacion implementada | Calendario interactivo
 
 ---
 
-## 🎯 DESCRIPCIÓN DEL PROYECTO
+## DESCRIPCION DEL PROYECTO
 
-Aplicación web para la gestión de turnos, alumnos, asistencias y pagos del taller de cerámica "Ela Taller".
+Aplicacion web para la gestion de turnos, alumnos, asistencias, pagos y recuperacion de clases del taller de ceramica "Ela Taller".
 
-### Tecnologías Utilizadas:
+### Tecnologias Utilizadas:
 - **Backend:** ASP.NET Core 8.0 (C#)
 - **Frontend:** React 18 + Vite
-- **Base de Datos:** PostgreSQL 16
-- **Contenedor:** Docker (PostgreSQL)
+- **Base de Datos:** SQLite (desarrollo) / PostgreSQL 16 (produccion)
+- **Contenedor:** Docker (PostgreSQL en produccion)
 - **Iconos:** Lucide React
 - **Estilos:** CSS inline (sin Tailwind)
+- **Autenticacion:** Basada en roles (Admin, Profesor, Alumno)
 
 ---
 
-## 📁 ESTRUCTURA DEL PROYECTO
+## ESTRUCTURA DEL PROYECTO
 
 ```
-~/Applications/ola-taller/
+ola-taller/
 ├── backend/
 │   ├── OlaAPI/                    # Proyecto Web API
 │   │   ├── Controllers/           # Endpoints REST
 │   │   │   ├── AlumnosController.cs
 │   │   │   ├── TurnosController.cs
 │   │   │   ├── InscripcionesController.cs
-│   │   │   └── AsistenciasController.cs
-│   │   ├── Program.cs             # Configuración principal
-│   │   ├── appsettings.json       # Cadena de conexión DB
+│   │   │   ├── AsistenciasController.cs
+│   │   │   ├── AuthController.cs
+│   │   │   ├── ConfiguracionController.cs
+│   │   │   ├── DiasSinClaseController.cs
+│   │   │   └── ProfesoresController.cs
+│   │   ├── Program.cs             # Configuracion principal
+│   │   ├── appsettings.json       # Cadena de conexion DB
 │   │   └── OlaAPI.csproj
 │   ├── OlaCore/                   # Modelos de dominio
 │   │   ├── Models/
@@ -41,27 +46,40 @@ Aplicación web para la gestión de turnos, alumnos, asistencias y pagos del tal
 │   │   │   ├── Inscripcion.cs
 │   │   │   ├── Asistencia.cs
 │   │   │   ├── Pago.cs
-│   │   │   └── Usuario.cs
+│   │   │   ├── Usuario.cs
+│   │   │   ├── Actividad.cs
+│   │   │   ├── AusenciaProgramada.cs
+│   │   │   ├── DiaSinClase.cs
+│   │   │   └── ConfiguracionSistema.cs
 │   │   └── OlaCore.csproj
 │   ├── OlaInfrastructure/         # Acceso a datos
 │   │   ├── Data/
 │   │   │   └── OlaDbContext.cs    # Contexto de Entity Framework
 │   │   └── OlaInfrastructure.csproj
-│   └── OlaAPI.sln                 # Solución .NET
+│   └── OlaAPI.sln                 # Solucion .NET
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Header.jsx         # Header con logo "ela TALLER"
-│   │   │   ├── Navigation.jsx     # Tabs de navegación
+│   │   │   ├── Header.jsx         # Header con logo y usuario logueado
+│   │   │   ├── Navigation.jsx     # Tabs de navegacion por rol
 │   │   │   ├── Layout.jsx         # Layout principal
-│   │   │   └── Card.jsx           # Componente tarjeta
+│   │   │   ├── Card.jsx           # Componente tarjeta
+│   │   │   ├── ProtectedRoute.jsx # Proteccion de rutas por rol
+│   │   │   └── Toast.jsx          # Notificaciones toast
 │   │   ├── pages/
-│   │   │   ├── PortalAlumno.jsx   # Vista del alumno
-│   │   │   ├── PortalProfesor.jsx # Vista del profesor
-│   │   │   └── Administracion.jsx # Panel admin
+│   │   │   ├── Login.jsx          # Pantalla de login
+│   │   │   ├── PortalAlumno.jsx   # Vista del alumno (clases y recuperacion)
+│   │   │   ├── Calendario.jsx     # Calendario interactivo
+│   │   │   ├── PortalProfesor.jsx # Vista del profesor (asistencias)
+│   │   │   ├── Administracion.jsx # Panel admin (dashboard y config)
+│   │   │   ├── Alumnos.jsx        # CRUD de alumnas
+│   │   │   ├── AlumnoDetalle.jsx  # Detalle de alumna con tabs
+│   │   │   └── Turnos.jsx         # Gestion de turnos
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx    # Contexto de autenticacion
 │   │   ├── services/
-│   │   │   └── api.js             # Cliente axios + servicios
+│   │   │   └── api.js             # Cliente axios + todos los servicios
 │   │   ├── styles/
 │   │   │   └── colors.js          # Paleta de colores del logo
 │   │   ├── App.jsx                # Rutas React Router
@@ -70,15 +88,22 @@ Aplicación web para la gestión de turnos, alumnos, asistencias y pagos del tal
 │   ├── package.json
 │   └── vite.config.js
 │
-└── DOCUMENTACION-PROYECTO.md      # Este archivo
+└── docs/
+    ├── DOCUMENTACION-PROYECTO.md  # Este archivo
+    ├── RESUMEN-EJECUTIVO.md       # Resumen ejecutivo
+    └── INTEGRACION-IDES.md        # Guia de integracion con IDEs
 ```
 
 ---
 
-## 🗄️ BASE DE DATOS
+## BASE DE DATOS
 
-### Información de Conexión:
+### Informacion de Conexion (Desarrollo - SQLite):
+```
+Archivo: backend/OlaAPI/olataller.db
+```
 
+### Informacion de Conexion (Produccion - PostgreSQL):
 ```
 Container: postgres-ola
 Host: localhost
@@ -88,103 +113,132 @@ Usuario: postgres
 Contraseña: ola2024
 ```
 
-### Comandos útiles:
+### Tablas:
 
-```bash
-# Ver estado del contenedor
-docker ps
-
-# Iniciar PostgreSQL
-docker start postgres-ola
-
-# Detener PostgreSQL
-docker stop postgres-ola
-
-# Conectarse a la base de datos
-docker exec -it postgres-ola psql -U postgres -d olataller
-
-# Ver tablas (dentro de psql)
-\dt
-
-# Salir de psql
-\q
-```
-
-### Tablas Creadas:
-
-- **Alumnos** - Información de alumnos
-- **Profesores** - Información de profesores
+- **Alumnos** - Informacion de alumnas (incluye clases pendientes de recuperar)
+- **Profesores** - Informacion de profesores
 - **Turnos** - Horarios de clases
-- **Inscripciones** - Relación alumno-turno
+- **Inscripciones** - Relacion alumno-turno
+- **AusenciasProgramadas** - Clases canceladas con fecha especifica
 - **Asistencias** - Registro de asistencias
+- **Actividades** - Log de actividades del sistema
 - **Pagos** - Registro de pagos mensuales
-- **Usuarios** - Autenticación (futuro)
+- **Usuarios** - Autenticacion con roles
+- **ConfiguracionSistema** - Parametros configurables
+- **DiasSinClase** - Dias feriados o sin actividad
 
 ---
 
-## ⚙️ BACKEND (.NET)
+## BACKEND (.NET)
 
 ### Puertos:
 
-- **HTTP:** http://localhost:5000
-- **Swagger:** http://localhost:5000/swagger (solo en Development)
+- **HTTP:** http://localhost:5001
+- **Swagger:** http://localhost:5001/swagger (solo en Development)
 
 ### Ejecutar Backend:
 
 ```bash
-cd ~/Applications/ola-taller/backend/OlaAPI
+cd backend/OlaAPI
 export ASPNETCORE_ENVIRONMENT=Development
 dotnet run
 ```
 
 ### Endpoints Principales:
 
+#### Alumnos
 ```
-GET    /api/alumnos              # Listar alumnos
-POST   /api/alumnos              # Crear alumno
-GET    /api/alumnos/{id}         # Obtener alumno
-PUT    /api/alumnos/{id}         # Actualizar alumno
-DELETE /api/alumnos/{id}         # Eliminar alumno (soft delete)
+GET    /api/alumnos              # Listar alumnas activas
+POST   /api/alumnos              # Crear alumna (auto-crea usuario)
+GET    /api/alumnos/{id}         # Obtener alumna con detalles
+PUT    /api/alumnos/{id}         # Actualizar alumna
+DELETE /api/alumnos/{id}         # Desactivar alumna
+```
 
-GET    /api/turnos               # Listar turnos con cupos
+#### Turnos
+```
+GET    /api/turnos               # Listar turnos activos
+GET    /api/turnos?incluirFechas=true  # Turnos con proximas 4 fechas
+GET    /api/turnos/{id}          # Detalle de turno con inscripciones
+GET    /api/turnos/profesor/{profesorId}  # Turnos por profesor
 POST   /api/turnos               # Crear turno
-GET    /api/turnos/{id}          # Obtener turno
 PUT    /api/turnos/{id}          # Actualizar turno
-DELETE /api/turnos/{id}          # Eliminar turno
+DELETE /api/turnos/{id}          # Desactivar turno
+```
 
-POST   /api/inscripciones        # Inscribir alumno a turno
-GET    /api/inscripciones/alumno/{alumnoId}  # Inscripciones del alumno
+#### Inscripciones
+```
+POST   /api/inscripciones                    # Inscribir alumna a turno
+GET    /api/inscripciones/{id}               # Detalle de inscripcion
+DELETE /api/inscripciones/{id}               # Cancelar inscripcion (suma clase a recuperar)
+POST   /api/inscripciones/recuperacion       # Inscribir en clase de recuperacion
+POST   /api/inscripciones/cancelar-proximas  # Cancelar proximas N clases
+GET    /api/inscripciones/alumno/{alumnoId}  # Inscripciones con proximas fechas
 GET    /api/inscripciones/turno/{turnoId}    # Inscripciones del turno
-DELETE /api/inscripciones/{id}   # Cancelar inscripción
+GET    /api/inscripciones/actividades        # Ultimas actividades del sistema
+GET    /api/inscripciones/actividades/alumno/{alumnoId}  # Actividades filtradas por alumna
+```
 
-POST   /api/asistencias          # Marcar asistencia individual
-POST   /api/asistencias/marcar-multiple      # Marcar múltiples
-GET    /api/asistencias/turno/{turnoId}?fecha={fecha}  # Asistencias por turno
-GET    /api/asistencias/alumno/{alumnoId}    # Asistencias del alumno
-GET    /api/asistencias/reporte/alumno/{alumnoId}  # Reporte de asistencia
+#### Asistencias
+```
+POST   /api/asistencias                      # Marcar asistencia individual
+POST   /api/asistencias/marcar-multiple      # Marcar multiples asistencias
+GET    /api/asistencias/{id}                 # Obtener registro
+GET    /api/asistencias/turno/{turnoId}?fecha={fecha}  # Asistencias por turno y fecha
+GET    /api/asistencias/alumno/{alumnoId}    # Historial de asistencia de alumna
+GET    /api/asistencias/reporte/alumno/{alumnoId}  # Reporte porcentual
+GET    /api/asistencias/historial/turno/{turnoId}  # Historial del turno (ultimo mes)
+```
+
+#### Autenticacion
+```
+POST   /api/auth/login                       # Login con email/password
+PUT    /api/auth/change-password/{id}        # Cambiar contraseña
+GET    /api/auth/usuarios                    # Listar usuarios activos
+```
+
+#### Configuracion del Sistema
+```
+GET    /api/configuracion                    # Obtener toda la configuracion
+GET    /api/configuracion/{clave}            # Obtener configuracion por clave
+PUT    /api/configuracion/{clave}            # Actualizar valor de configuracion
+```
+
+#### Dias Sin Clase
+```
+GET    /api/diassinclase?anio={year}&mes={month}  # Dias sin clase del mes
+GET    /api/diassinclase/verificar?fecha={date}   # Verificar si es dia sin clase
+POST   /api/diassinclase                          # Agregar dia sin clase
+DELETE /api/diassinclase/{id}                      # Eliminar dia sin clase
+```
+
+#### Profesores
+```
+GET    /api/profesores              # Listar profesores activos
+GET    /api/profesores/{id}         # Detalle de profesor
+POST   /api/profesores              # Crear profesor (auto-crea usuario)
+PUT    /api/profesores/{id}         # Actualizar profesor
+DELETE /api/profesores/{id}         # Desactivar profesor
 ```
 
 ### Comandos Entity Framework:
 
 ```bash
-cd ~/Applications/ola-taller/backend/OlaAPI
+cd backend/OlaAPI
 
-# Crear nueva migración
+# Crear nueva migracion
 dotnet ef migrations add NombreMigracion --project ../OlaInfrastructure
 
 # Aplicar migraciones
 dotnet ef database update --project ../OlaInfrastructure
 
-# Revertir última migración
+# Revertir ultima migracion
 dotnet ef migrations remove --project ../OlaInfrastructure
-
-# Ver migraciones
-dotnet ef migrations list --project ../OlaInfrastructure
 ```
 
 ---
 
-## 🎨 FRONTEND (React)
+## FRONTEND (React)
 
 ### Puerto:
 
@@ -193,234 +247,145 @@ dotnet ef migrations list --project ../OlaInfrastructure
 ### Ejecutar Frontend:
 
 ```bash
-cd ~/Applications/ola-taller/frontend
+cd frontend
 npm run dev
 ```
 
-### Rutas de la Aplicación:
+### Rutas de la Aplicacion:
 
 ```
-/                       → Redirige a /portal-alumno
-/portal-alumno          → Vista del alumno
-/portal-profesor        → Vista del profesor  
-/administracion         → Panel de administración
+/login                  → Pantalla de login (publica)
+/portal-alumno          → Vista del alumno (Admin, Alumno)
+/calendario             → Calendario interactivo (Admin, Alumno)
+/portal-profesor        → Vista del profesor (Admin, Profesor)
+/administracion         → Panel de administracion (Admin)
+/alumnos                → Gestion de alumnas (Admin)
+/alumnos/:id            → Detalle de alumna (Admin)
+/turnos                 → Gestion de turnos (Admin)
 ```
 
 ### Paleta de Colores (src/styles/colors.js):
 
 ```javascript
 primary: '#B67B5F'        // Terracota del logo
-primaryDark: '#9D6851'    // Versión oscura
-primaryLight: '#C89479'   // Versión clara
-success: '#10B981'        // Verde
-warning: '#F59E0B'        // Amarillo
-error: '#EF4444'          // Rojo
-```
-
-### Dependencias Instaladas:
-
-```json
-{
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.x",
-    "axios": "^1.x",
-    "lucide-react": "^0.x"
-  }
-}
+primaryDark: '#9D6851'    // Version oscura
+primaryLight: '#C89479'   // Version clara
+success: '#10B981'        // Verde (recuperacion/positivo)
+warning: '#F59E0B'        // Amarillo (disponibilidad limitada)
+error: '#EF4444'          // Rojo (cancelacion/dias sin clase)
 ```
 
 ---
 
-## 🚀 CÓMO EJECUTAR EL PROYECTO COMPLETO
+## COMO EJECUTAR EL PROYECTO COMPLETO
 
-### 1. Iniciar PostgreSQL:
-
-```bash
-docker start postgres-ola
-```
-
-### 2. Iniciar Backend (Terminal 1):
+### Desarrollo (SQLite):
 
 ```bash
-cd ~/Applications/ola-taller/backend/OlaAPI
+# Terminal 1 - Backend
+cd backend/OlaAPI
 export ASPNETCORE_ENVIRONMENT=Development
 dotnet run
-```
 
-Debería mostrar:
-```
-Now listening on: http://localhost:5000
-```
-
-### 3. Iniciar Frontend (Terminal 2):
-
-```bash
-cd ~/Applications/ola-taller/frontend
+# Terminal 2 - Frontend
+cd frontend
 npm run dev
 ```
 
-Debería mostrar:
-```
-Local: http://localhost:5173/
+### Produccion (PostgreSQL):
+
+```bash
+# Terminal 1 - PostgreSQL
+docker start postgres-ola
+
+# Terminal 2 - Backend
+cd backend/OlaAPI
+dotnet run
+
+# Terminal 3 - Frontend
+cd frontend
+npm run dev
 ```
 
-### 4. Abrir en navegador:
+### Abrir en navegador:
 
 - **Frontend:** http://localhost:5173
-- **API Swagger:** http://localhost:5000/swagger
+- **API Swagger:** http://localhost:5001/swagger
 
 ---
 
-## 📝 FUNCIONALIDADES IMPLEMENTADAS
+## FUNCIONALIDADES IMPLEMENTADAS
 
-### ✅ Backend:
-- [x] CRUD de Alumnos
-- [x] CRUD de Turnos
-- [x] Gestión de Inscripciones (con validación de cupos)
-- [x] Registro de Asistencias
-- [x] Reportes de asistencia por alumno
-- [x] Base de datos PostgreSQL configurada
+### Backend:
+- [x] CRUD de Alumnas (con campo clases pendientes de recuperar)
+- [x] CRUD de Turnos (con proximas fechas y exclusion de dias sin clase)
+- [x] CRUD de Profesores (con auto-creacion de usuario)
+- [x] Gestion de Inscripciones (con validacion de cupos)
+- [x] Sistema de cancelacion de clases (individual y multiples)
+- [x] Sistema de recuperacion de clases
+- [x] Registro de Asistencias (individual y multiple)
+- [x] Reportes de asistencia por alumna (porcentual)
+- [x] Historial de asistencia por turno
+- [x] Log de actividades del sistema
+- [x] Autenticacion con login y roles
+- [x] Gestion de dias sin clase (feriados)
+- [x] Configuracion del sistema dinamica
+- [x] Base de datos SQLite (dev) y PostgreSQL (prod)
 - [x] Migraciones de Entity Framework
 - [x] CORS configurado para frontend
 
-### ✅ Frontend:
-- [x] Portal del Alumno completo
-- [x] Portal del Profesor completo
-- [x] Panel de Administración completo
-- [x] Navegación con tabs
-- [x] Conexión con API backend
-- [x] Diseño con colores del logo
+### Frontend:
+- [x] Sistema de login con autenticacion por roles
+- [x] Rutas protegidas por rol (Admin, Profesor, Alumno)
+- [x] Portal del Alumno (proxima clase, clases a recuperar, cancelacion, recuperacion)
+- [x] Calendario interactivo (vista mensual, cancelar/recuperar clases, dias sin clase)
+- [x] Portal del Profesor (seleccion de turno, marcar asistencia, historial)
+- [x] Panel de Administracion (dashboard, actividades, configuracion del sistema)
+- [x] Gestion de Alumnas (CRUD, busqueda, paginacion, ordenamiento)
+- [x] Detalle de Alumna (perfil, inscripciones, historial de actividades con filtros)
+- [x] Gestion de Turnos (CRUD, asignar profesor, inscribir/desinscribir alumnas)
+- [x] Navegacion con tabs basada en rol del usuario
+- [x] Notificaciones toast
+- [x] Diseño con colores del logo (terracota)
 
-### 🚧 Pendiente:
-- [ ] Sistema de autenticación/login
-- [ ] Gestión de Pagos (CRUD completo)
-- [ ] Integración con MercadoPago
+### Pendiente:
+- [ ] Gestion de Pagos (CRUD completo)
+- [ ] Integracion con MercadoPago
 - [ ] Notificaciones por email/WhatsApp
-- [ ] Módulo de recuperación de clases funcional
-- [ ] Dashboard con estadísticas reales (conectadas a DB)
-- [ ] Reportes avanzados
-- [ ] Lista de espera automática
+- [ ] Dashboard con estadisticas avanzadas
+- [ ] Reportes exportables (PDF, Excel)
+- [ ] Lista de espera automatica
 
 ---
 
-## 🔧 CONFIGURACIÓN IMPORTANTE
-
-### appsettings.json (Backend):
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=olataller;Username=postgres;Password=ola2024"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Microsoft.EntityFrameworkCore": "Information"
-    }
-  },
-  "AllowedHosts": "*"
-}
-```
-
-### Program.cs - CORS configurado para:
-
-```csharp
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
-```
-
-### api.js (Frontend):
-
-```javascript
-const API_BASE_URL = 'http://localhost:5000/api';
-```
-
----
-
-## 🐛 SOLUCIÓN DE PROBLEMAS COMUNES
-
-### Backend no se conecta a PostgreSQL:
-
-```bash
-# Verificar que el contenedor esté corriendo
-docker ps
-
-# Si no está, iniciarlo
-docker start postgres-ola
-
-# Verificar logs
-docker logs postgres-ola
-```
-
-### Error "Port 5000 already in use":
-
-```bash
-# Encontrar proceso usando el puerto
-lsof -i :5000
-
-# Matar el proceso
-kill -9 [PID]
-```
-
-### Frontend no se conecta al backend:
-
-1. Verificar que el backend esté corriendo en http://localhost:5000
-2. Revisar la consola del navegador (F12) para errores CORS
-3. Verificar que `src/services/api.js` tenga la URL correcta
-
-### Error "Cannot find module lucide-react":
-
-```bash
-cd ~/Applications/ola-taller/frontend
-npm install lucide-react
-```
-
-### Migraciones de Entity Framework fallan:
-
-```bash
-# Asegurarse de estar en la carpeta correcta
-cd ~/Applications/ola-taller/backend/OlaAPI
-
-# Verificar que PostgreSQL esté corriendo
-docker ps | grep postgres-ola
-
-# Reinstalar EF tools si es necesario
-dotnet tool uninstall --global dotnet-ef
-dotnet tool install --global dotnet-ef
-
-# Agregar al PATH si no lo reconoce
-echo 'export PATH="$PATH:$HOME/.dotnet/tools"' >> ~/.zshrc
-source ~/.zshrc
-```
-
----
-
-## 📊 MODELOS DE DATOS
+## MODELOS DE DATOS
 
 ### Alumno:
-```csharp
+```
 - Id (int)
 - Nombre (string)
 - Apellido (string)
 - Email (string, unique)
 - Telefono (string, nullable)
+- FechaNacimiento (DateTime, nullable)
+- Notas (string, nullable)
 - FechaRegistro (DateTime)
+- Activo (bool)
+- ClasesPendientesRecuperar (int, default 0)
+```
+
+### Profesor:
+```
+- Id (int)
+- Nombre (string)
+- Apellido (string)
+- Email (string)
+- Telefono (string, nullable)
 - Activo (bool)
 ```
 
 ### Turno:
-```csharp
+```
 - Id (int)
 - DiaSemana (DayOfWeek: 0-6)
 - HoraInicio (TimeSpan)
@@ -431,7 +396,7 @@ source ~/.zshrc
 ```
 
 ### Inscripcion:
-```csharp
+```
 - Id (int)
 - AlumnoId (int)
 - TurnoId (int)
@@ -439,8 +404,15 @@ source ~/.zshrc
 - Activa (bool)
 ```
 
+### AusenciaProgramada:
+```
+- Id (int)
+- InscripcionId (int)
+- Fecha (DateTime)
+```
+
 ### Asistencia:
-```csharp
+```
 - Id (int)
 - AlumnoId (int)
 - TurnoId (int)
@@ -450,93 +422,143 @@ source ~/.zshrc
 - FechaRegistro (DateTime)
 ```
 
+### Actividad:
+```
+- Id (int)
+- Tipo (string: "inscripcion", "cancelacion", "recuperacion", "asistencia", "inasistencia")
+- AlumnoId (int)
+- TurnoId (int)
+- Fecha (DateTime)
+```
+
+### DiaSinClase:
+```
+- Id (int)
+- Fecha (DateTime)
+- Motivo (string)
+```
+
+### Usuario:
+```
+- Id (int)
+- Email (string)
+- PasswordHash (string)
+- Rol (string: "Admin", "Profesor", "Alumno")
+- AlumnoId (int, nullable)
+- ProfesorId (int, nullable)
+- Activo (bool)
+```
+
+### Pago:
+```
+- Id (int)
+- AlumnoId (int)
+- Monto (decimal)
+- FechaPago (DateTime)
+- FechaVencimiento (DateTime)
+- MetodoPago (string: "Efectivo", "Transferencia", "MercadoPago")
+- Comprobante (string, nullable)
+- Estado (string: "Pendiente", "Pagado", "Vencido")
+- MesPago (int)
+- AnioPago (int)
+```
+
+### ConfiguracionSistema:
+```
+- Id (int)
+- Clave (string)
+- Valor (string)
+- Descripcion (string)
+```
+
 ---
 
-## 🔑 INFORMACIÓN CLAVE PARA CLAUDE
+## AUTENTICACION Y ROLES
 
-### Para continuar el desarrollo en futuras conversaciones:
+### Roles disponibles:
+- **Admin** - Acceso completo a todo el sistema
+- **Profesor** - Acceso al portal de profesor y asistencias
+- **Alumno** - Acceso al portal de alumno y calendario
 
-**Ubicación del proyecto:**
-```
-/Users/caro/Applications/ola-taller/
-```
+### Login:
+- Autenticacion por email y password (SHA256)
+- Password por defecto para nuevos usuarios: "olataller"
+- Redireccion automatica segun rol al iniciar sesion
 
-**Versiones instaladas:**
-- Node.js: 20.16.0
-- .NET: 8.0
-- PostgreSQL: 16 (en Docker)
+### Rutas protegidas:
+- Componente `ProtectedRoute` verifica autenticacion y rol
+- Si no autenticado, redirige a `/login`
 
-**Comandos para verificar el estado:**
+---
+
+## SISTEMA DE CANCELACION Y RECUPERACION DE CLASES
+
+### Flujo de cancelacion:
+1. Alumna cancela una clase futura desde el portal o calendario
+2. Se valida que falten las horas minimas de anticipacion (configurable)
+3. Se registra como `AusenciaProgramada`
+4. Se incrementa el contador `ClasesPendientesRecuperar` de la alumna
+5. Se registra una `Actividad` de tipo "cancelacion"
+
+### Flujo de recuperacion:
+1. Alumna ve turnos disponibles con cupo
+2. Se inscribe en una clase de recuperacion
+3. Se decrementa el contador `ClasesPendientesRecuperar`
+4. Se registra una `Actividad` de tipo "recuperacion"
+
+### Configuracion:
+- `HorasAnticipacionCancelacion`: horas minimas antes de la clase para poder cancelar
+
+---
+
+## SOLUCION DE PROBLEMAS COMUNES
+
+### Backend no se conecta a PostgreSQL:
 ```bash
-# Backend corriendo?
-curl http://localhost:5000/api/alumnos
-
-# Frontend corriendo?
-curl http://localhost:5173
-
-# PostgreSQL corriendo?
-docker ps | grep postgres-ola
+docker ps
+docker start postgres-ola
+docker logs postgres-ola
 ```
 
-**Estructura importante a recordar:**
-- Los colores del diseño vienen del logo (#B67B5F - terracota)
-- Hay 3 portales distintos: Alumno, Profesor, Admin
-- No usar Tailwind CSS - todo con estilos inline
-- La navegación es con tabs, no con links simples
+### Error "Port already in use":
+```bash
+lsof -i :5001
+kill -9 [PID]
+```
+
+### Frontend no se conecta al backend:
+1. Verificar que el backend este corriendo
+2. Revisar la consola del navegador (F12) para errores CORS
+3. Verificar que `src/services/api.js` tenga la URL correcta
+
+### Migraciones de Entity Framework fallan:
+```bash
+cd backend/OlaAPI
+dotnet tool install --global dotnet-ef
+dotnet ef database update --project ../OlaInfrastructure
+```
 
 ---
 
-## 📞 PRÓXIMOS PASOS SUGERIDOS
+## PROXIMOS PASOS SUGERIDOS
 
 ### Corto plazo:
-1. Implementar sistema de login/autenticación
-2. Conectar el dashboard de Admin con datos reales
-3. Completar el módulo de Pagos
-4. Implementar recuperación de clases funcional
+1. Completar el modulo de Pagos (CRUD completo)
+2. Dashboard con estadisticas conectadas a datos reales
+3. Reportes exportables
 
 ### Mediano plazo:
 1. Notificaciones por email/WhatsApp
-2. Integración con MercadoPago
-3. Reportes avanzados (PDF, Excel)
-4. Lista de espera automática
+2. Integracion con MercadoPago
+3. Lista de espera automatica
 
 ### Largo plazo:
-1. App móvil nativa
-2. Sistema de recordatorios automáticos
-3. Panel de estadísticas avanzado
-4. Integración con calendario (Google Calendar, iCal)
+1. App movil nativa
+2. Sistema de recordatorios automaticos
+3. Integracion con calendario (Google Calendar, iCal)
 
 ---
 
-## 🎓 CONTEXTO ADICIONAL
-
-### Historia del Proyecto:
-- Conversación iniciada el 26/12/2024
-- Backend instalado y funcionando
-- Frontend actualizado con diseño original de la propuesta
-- Base de datos creada con todas las tablas
-- Sistema básico funcional
-
-### Decisiones de Diseño:
-- Se eligió React sobre otros frameworks por simplicidad
-- PostgreSQL por ser gratuito y robusto
-- .NET Core por performance y tipado fuerte
-- Sin Tailwind para mantener simplicidad y control total
-
----
-
-## ✅ CHECKLIST DE VERIFICACIÓN
-
-Antes de empezar una nueva conversación, verifica:
-
-- [ ] PostgreSQL corriendo: `docker ps | grep postgres-ola`
-- [ ] Backend compila: `cd backend/OlaAPI && dotnet build`
-- [ ] Frontend compila: `cd frontend && npm run build`
-- [ ] Base de datos accesible: `docker exec -it postgres-ola psql -U postgres -d olataller`
-- [ ] Tienes este archivo de documentación actualizado
-
----
-
-**Última actualización:** 26/12/2024  
-**Autor:** Carolina  
-**Proyecto:** Ela Taller - Sistema de Gestión de Turnos
+**Ultima actualizacion:** 09/02/2026
+**Autora:** Carolina
+**Proyecto:** Ela Taller - Sistema de Gestion de Turnos
