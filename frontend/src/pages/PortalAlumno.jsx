@@ -155,8 +155,10 @@ function PortalAlumno() {
     });
   });
 
-  // Turnos con cupos (el filtro por fecha se hace en el render)
-  const turnosConCupos = turnos.filter(turno => (turno.cuposDisponibles || 0) > 0);
+  // Turnos que tienen al menos una fecha con cupos disponibles
+  const turnosConCupos = turnos.filter(turno =>
+    turno.proximasFechas?.some(pf => (pf.cuposDisponibles || 0) > 0)
+  );
 
   if (loading) {
     return (
@@ -355,8 +357,9 @@ function PortalAlumno() {
           const items = turnosConCupos.flatMap((turno) => {
             if (!turno.proximasFechas) return [];
             return turno.proximasFechas
-              .filter(f => !inscriptoPorTurnoYFecha.has(`${turno.id}-${f.slice(0, 10)}`))
-              .map((f) => ({ turno, fecha: parseFechaBackend(f) }));
+              .filter(pf => (pf.cuposDisponibles || 0) > 0)
+              .filter(pf => !inscriptoPorTurnoYFecha.has(`${turno.id}-${pf.fecha.slice(0, 10)}`))
+              .map((pf) => ({ turno, fecha: parseFechaBackend(pf.fecha), cuposDisponibles: pf.cuposDisponibles }));
           }).sort((a, b) => a.fecha - b.fecha).slice(0, 5);
           return items.length === 0 ? (
           <Card>
@@ -366,7 +369,7 @@ function PortalAlumno() {
           </Card>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {items.map(({ turno, fecha }, idx) => {
+            {items.map(({ turno, fecha, cuposDisponibles }, idx) => {
               const tieneClasesPendientes = (alumnoData?.clasesPendientesRecuperar || 0) > 0;
               return (
                 <Card key={`${turno.id}-${idx}`}>
@@ -382,11 +385,11 @@ function PortalAlumno() {
                     </div>
                     <div style={{
                       fontSize: '0.75rem',
-                      color: turno.cuposDisponibles > 3 ? colors.success : colors.warning,
+                      color: cuposDisponibles > 3 ? colors.success : colors.warning,
                       fontWeight: '500',
                       marginBottom: '0.75rem'
                     }}>
-                      {turno.cuposDisponibles || 0} cupos disponibles
+                      {cuposDisponibles} cupo{cuposDisponibles !== 1 ? 's' : ''} disponible{cuposDisponibles !== 1 ? 's' : ''}
                     </div>
                     <button
                       onClick={() => handleInscribirRecuperacion(turno.id)}

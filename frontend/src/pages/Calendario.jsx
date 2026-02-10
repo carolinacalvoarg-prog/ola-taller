@@ -93,14 +93,14 @@ function Calendario() {
     return mapa;
   }, [inscripciones]);
 
-  // Lookup: turnos disponibles por fecha (chequea por fecha, no globalmente)
+  // Lookup: turnos disponibles por fecha (usa cupos por fecha del backend)
   const turnosDisponiblesPorFecha = useMemo(() => {
     const mapa = {};
     turnos.forEach(turno => {
-      if ((turno.cuposDisponibles || 0) <= 0) return;
       if (!turno.proximasFechas) return;
-      turno.proximasFechas.forEach(f => {
-        const fechaStr = f.slice(0, 10);
+      turno.proximasFechas.forEach(pf => {
+        if ((pf.cuposDisponibles || 0) <= 0) return;
+        const fechaStr = pf.fecha.slice(0, 10);
         const yaInscriptoEnFecha = (misClasesPorFecha[fechaStr] || []).some(c => c.turnoId === turno.id);
         if (yaInscriptoEnFecha) return;
         if (!mapa[fechaStr]) mapa[fechaStr] = [];
@@ -108,7 +108,7 @@ function Calendario() {
           turnoId: turno.id,
           horaInicio: turno.horaInicio,
           horaFin: turno.horaFin,
-          cuposDisponibles: turno.cuposDisponibles
+          cuposDisponibles: pf.cuposDisponibles
         });
       });
     });

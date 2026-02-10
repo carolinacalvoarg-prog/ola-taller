@@ -62,6 +62,16 @@ public class TurnosController : ControllerBase
                 .ToListAsync()
         );
 
+        // Cargar ausencias programadas para calcular cupos por fecha
+        var ausenciasPorTurnoFecha = await _context.AusenciasProgramadas
+            .Include(a => a.Inscripcion)
+            .Where(a => a.Fecha >= hoy && a.Fecha < hasta && a.Inscripcion!.Activa)
+            .GroupBy(a => new { a.Inscripcion!.TurnoId, Fecha = a.Fecha.Date })
+            .Select(g => new { g.Key.TurnoId, g.Key.Fecha, Count = g.Count() })
+            .ToListAsync();
+        var ausenciasLookup = ausenciasPorTurnoFecha
+            .ToDictionary(a => $"{a.TurnoId}-{a.Fecha:yyyy-MM-dd}", a => a.Count);
+
         var resultado = turnosOrdenados.Select(t =>
         {
             var diaSemana = (int)t.DiaSemana;
@@ -74,11 +84,18 @@ public class TurnosController : ControllerBase
                 diasSumar = 7;
             actual = actual.AddDays(diasSumar);
 
-            var fechas = new List<DateTime>();
+            var fechas = new List<object>();
             while (fechas.Count < 4 && actual < hasta)
             {
                 if (!diasSinClaseSet.Contains(actual))
-                    fechas.Add(actual);
+                {
+                    var ausencias = ausenciasLookup.GetValueOrDefault($"{t.Id}-{actual:yyyy-MM-dd}", 0);
+                    fechas.Add(new
+                    {
+                        Fecha = actual,
+                        CuposDisponibles = t.CuposDisponibles + ausencias
+                    });
+                }
                 actual = actual.AddDays(7);
             }
 
