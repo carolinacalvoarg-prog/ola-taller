@@ -218,24 +218,25 @@ public class InscripcionesController : ControllerBase
         if (turno == null || !turno.Activo)
             return BadRequest("El turno no existe o no está activo.");
 
-        var fechaRecuperacion = dto.Fecha.Date;
+        var fechaRecuperacion = DateTime.SpecifyKind(dto.Fecha.Date, DateTimeKind.Utc);
 
         // Verificar que no exista ya una recuperación para este alumno/turno/fecha
         var yaExiste = await _context.RecuperacionesProgramadas
-            .AnyAsync(r => r.AlumnoId == dto.AlumnoId && r.TurnoId == dto.TurnoId && r.Fecha.Date == fechaRecuperacion);
+            .AnyAsync(r => r.AlumnoId == dto.AlumnoId && r.TurnoId == dto.TurnoId && r.Fecha == fechaRecuperacion);
         if (yaExiste)
             return BadRequest("Ya tienes una recuperación programada para este turno en esa fecha.");
 
         // Calcular cupos disponibles para esa fecha específica
         // cuposDisponibles = cuposMax - inscripcionesActivas + ausenciasEnFecha - recuperacionesEnFecha
         var inscripcionesActivas = turno.Inscripciones.Count;
+        var fechaSiguiente = fechaRecuperacion.AddDays(1);
         var ausenciasEnFecha = await _context.AusenciasProgramadas
             .Include(a => a.Inscripcion)
             .CountAsync(a => a.Inscripcion!.TurnoId == dto.TurnoId
                           && a.Inscripcion.Activa
-                          && a.Fecha.Date == fechaRecuperacion);
+                          && a.Fecha >= fechaRecuperacion && a.Fecha < fechaSiguiente);
         var recuperacionesEnFecha = await _context.RecuperacionesProgramadas
-            .CountAsync(r => r.TurnoId == dto.TurnoId && r.Fecha.Date == fechaRecuperacion);
+            .CountAsync(r => r.TurnoId == dto.TurnoId && r.Fecha >= fechaRecuperacion && r.Fecha < fechaSiguiente);
 
         var cuposDisponibles = turno.CuposMaximos - inscripcionesActivas + ausenciasEnFecha - recuperacionesEnFecha;
         if (cuposDisponibles <= 0)
@@ -426,7 +427,8 @@ public class InscripcionesController : ControllerBase
     [HttpGet("turno/{turnoId}/fecha/{fecha}")]
     public async Task<ActionResult<IEnumerable<object>>> GetAlumnosPorTurnoYFecha(int turnoId, DateTime fecha)
     {
-        var fechaDate = fecha.Date;
+        var fechaDate = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
+        var fechaSiguiente = fechaDate.AddDays(1);
 
         // Alumnos regulares inscriptos en el turno, excluyendo ausencias programadas para esa fecha
         var inscripcionesActivas = await _context.Inscripciones
@@ -435,7 +437,7 @@ public class InscripcionesController : ControllerBase
             .ToListAsync();
 
         var ausenciasEnFecha = await _context.AusenciasProgramadas
-            .Where(a => a.Fecha.Date == fechaDate && a.Inscripcion!.TurnoId == turnoId)
+            .Where(a => a.Fecha >= fechaDate && a.Fecha < fechaSiguiente && a.Inscripcion!.TurnoId == turnoId)
             .Select(a => a.InscripcionId)
             .ToListAsync();
         var ausenciasSet = new HashSet<int>(ausenciasEnFecha);
@@ -456,7 +458,7 @@ public class InscripcionesController : ControllerBase
         // Alumnos de recuperación para esa fecha y turno
         var alumnosRecuperacion = await _context.RecuperacionesProgramadas
             .Include(r => r.Alumno)
-            .Where(r => r.TurnoId == turnoId && r.Fecha.Date == fechaDate && r.Alumno != null)
+            .Where(r => r.TurnoId == turnoId && r.Fecha >= fechaDate && r.Fecha < fechaSiguiente && r.Alumno != null)
             .Select(r => new
             {
                 r.Alumno!.Id,
