@@ -386,7 +386,12 @@ function PortalAlumno() {
                         </div>
                         {(item.tipo === 'regular' || item.tipo === 'recuperacion') && (() => {
                           const ahora = new Date();
-                          const horasRestantes = (item.fecha - ahora) / (1000 * 60 * 60);
+                          const fechaClase = new Date(item.fecha);
+                          if (item.turno.horaInicio) {
+                            const [h, m] = item.turno.horaInicio.split(':').map(Number);
+                            fechaClase.setHours(h, m, 0, 0);
+                          }
+                          const horasRestantes = (fechaClase - ahora) / (1000 * 60 * 60);
                           const puedeAccionar = horasRestantes >= horasAnticipacion;
                           const esRecup = item.tipo === 'recuperacion';
                           return (
