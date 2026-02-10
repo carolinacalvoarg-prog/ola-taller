@@ -52,9 +52,9 @@ public class TurnosController : ControllerBase
         if (!incluirFechas)
             return Ok(turnosOrdenados);
 
-        // Calcular próximas 4 fechas por turno, excluyendo días sin clase
+        // Calcular próximas fechas por turno (mes actual + siguiente), excluyendo días sin clase
         var hoy = DateTime.UtcNow.Date;
-        var hasta = hoy.AddMonths(3);
+        var hasta = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
         var diasSinClaseSet = new HashSet<DateTime>(
             await _context.DiasSinClase
                 .Where(d => d.Fecha >= hoy && d.Fecha < hasta)
@@ -94,7 +94,7 @@ public class TurnosController : ControllerBase
             actual = actual.AddDays(diasSumar);
 
             var fechas = new List<object>();
-            while (fechas.Count < 4 && actual < hasta)
+            while (fechas.Count < 9 && actual < hasta)
             {
                 if (!diasSinClaseSet.Contains(actual))
                 {

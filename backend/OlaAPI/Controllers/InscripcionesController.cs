@@ -43,7 +43,8 @@ public class InscripcionesController : ControllerBase
         if (turno == null) return new List<DateTime>();
 
         var diaSemana = (int)turno.DiaSemana; // 0=Dom, 1=Lun, ...
-        var hasta = desde.AddMonths(3);
+        // Limitar a mes actual + siguiente
+        var hasta = new DateTime(desde.Year, desde.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
         var diasSinClase = await _context.DiasSinClase
             .Where(d => d.Fecha >= desde && d.Fecha < hasta)
             .Select(d => d.Fecha.Date)
@@ -295,7 +296,7 @@ public class InscripcionesController : ControllerBase
             var proximasFechas = new List<DateTime>();
             if (turno != null)
             {
-                proximasFechas = await GetProximasFechasClaseAsync(turno.Id, i.Id, hoy, 4);
+                proximasFechas = await GetProximasFechasClaseAsync(turno.Id, i.Id, hoy, 12);
             }
             resultado.Add(new
             {

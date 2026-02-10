@@ -355,6 +355,7 @@ npm run dev
 - [ ] Dashboard con estadisticas avanzadas
 - [ ] Reportes exportables (PDF, Excel)
 - [ ] Lista de espera automatica
+- [ ] Configurar desde panel de administrador la cantidad de meses a futuro que el alumno puede ver, cancelar e inscribirse a clases (actualmente fijo: mes actual + 1 mes)
 
 ---
 

@@ -64,6 +64,7 @@ npm run dev
 - Notificaciones por email/WhatsApp
 - Reportes exportables (PDF, Excel)
 - Lista de espera automatica
+- Configurar desde admin la cantidad de meses a futuro visibles para cancelacion/inscripcion (actualmente: mes actual + 1)
 
 ---
 
