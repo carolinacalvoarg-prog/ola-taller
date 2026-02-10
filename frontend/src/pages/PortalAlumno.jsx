@@ -247,6 +247,37 @@ function PortalAlumno() {
         </Card>
       </div>
 
+      {/* Mi Clase Fija */}
+      {inscripciones.length > 0 && (
+        <div style={{ marginTop: '1.5rem' }}>
+          <Card title="Mi Clase Fija">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {inscripciones.map(insc => (
+                <div key={insc.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem',
+                  backgroundColor: colors.primary + '08',
+                  borderRadius: '8px',
+                  borderLeft: `4px solid ${colors.primary}`
+                }}>
+                  <Calendar size={18} style={{ color: colors.primary, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: '600', color: colors.gray[900] }}>
+                      {getDiaSemana(insc.turno?.diaSemana)} {insc.turno?.horaInicio} - {insc.turno?.horaFin}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ fontSize: '0.8rem', color: colors.gray[500], marginTop: '0.25rem' }}>
+                Tus clases se reservan automaticamente en este turno
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Mis Clases Inscriptas */}
       <div style={{ marginTop: '2rem' }}>
         <h3 style={{
