@@ -289,6 +289,15 @@ public class InscripcionesController : ControllerBase
             .ToListAsync();
 
         var hoy = DateTime.UtcNow.Date;
+        var hasta = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
+
+        // Cargar ausencias futuras de todas las inscripciones del alumno
+        var inscripcionIds = inscripciones.Select(i => i.Id).ToList();
+        var ausenciasPorInscripcion = await _context.AusenciasProgramadas
+            .Where(a => inscripcionIds.Contains(a.InscripcionId) && a.Fecha >= hoy && a.Fecha < hasta)
+            .GroupBy(a => a.InscripcionId)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(a => a.Fecha).ToList());
+
         var resultado = new List<object>();
         foreach (var i in inscripciones)
         {
@@ -298,6 +307,7 @@ public class InscripcionesController : ControllerBase
             {
                 proximasFechas = await GetProximasFechasClaseAsync(turno.Id, i.Id, hoy, 12);
             }
+            var fechasCanceladas = ausenciasPorInscripcion.GetValueOrDefault(i.Id, new List<DateTime>());
             resultado.Add(new
             {
                 i.Id,
@@ -306,6 +316,7 @@ public class InscripcionesController : ControllerBase
                 i.FechaInscripcion,
                 i.Activa,
                 ProximasFechas = proximasFechas,
+                FechasCanceladas = fechasCanceladas,
                 Turno = turno != null ? new
                 {
                     turno.Id,
@@ -318,6 +329,34 @@ public class InscripcionesController : ControllerBase
         }
 
         return Ok(resultado);
+    }
+
+    // GET: api/Inscripciones/alumno/5/recuperaciones
+    [HttpGet("alumno/{alumnoId}/recuperaciones")]
+    public async Task<ActionResult<IEnumerable<object>>> GetRecuperacionesByAlumno(int alumnoId)
+    {
+        var hoy = DateTime.UtcNow.Date;
+        var recuperaciones = await _context.RecuperacionesProgramadas
+            .Include(r => r.Turno)
+            .Where(r => r.AlumnoId == alumnoId && r.Fecha >= hoy)
+            .OrderBy(r => r.Fecha)
+            .Select(r => new
+            {
+                r.Id,
+                r.AlumnoId,
+                r.TurnoId,
+                r.Fecha,
+                Turno = r.Turno != null ? new
+                {
+                    r.Turno.Id,
+                    r.Turno.DiaSemana,
+                    r.Turno.HoraInicio,
+                    r.Turno.HoraFin
+                } : null
+            })
+            .ToListAsync();
+
+        return Ok(recuperaciones);
     }
 
     // POST: api/Inscripciones/cancelar-proximas

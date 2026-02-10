@@ -10,6 +10,7 @@ function PortalAlumno() {
   const { user } = useAuth();
   const [alumnoData, setAlumnoData] = useState(null);
   const [inscripciones, setInscripciones] = useState([]);
+  const [recuperaciones, setRecuperaciones] = useState([]);
   const [turnos, setTurnos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [horasAnticipacion, setHorasAnticipacion] = useState(24);
@@ -29,15 +30,17 @@ function PortalAlumno() {
 
     try {
       setLoading(true);
-      const [alumnoRes, inscripcionesRes, turnosRes, configRes] = await Promise.all([
+      const [alumnoRes, inscripcionesRes, turnosRes, configRes, recuperacionesRes] = await Promise.all([
         alumnosService.getById(user.alumnoId),
         inscripcionesService.getByAlumno(user.alumnoId),
         turnosService.getAllConFechas(),
-        configuracionService.get('HorasAnticipacionCancelacion')
+        configuracionService.get('HorasAnticipacionCancelacion'),
+        inscripcionesService.getRecuperacionesByAlumno(user.alumnoId)
       ]);
 
       setAlumnoData(alumnoRes.data);
       setInscripciones(inscripcionesRes.data || []);
+      setRecuperaciones(recuperacionesRes.data || []);
       setTurnos(turnosRes.data || []);
       setHorasAnticipacion(parseInt(configRes.data.valor) || 24);
     } catch (error) {
@@ -278,7 +281,7 @@ function PortalAlumno() {
         </div>
       )}
 
-      {/* Mis Clases Inscriptas */}
+      {/* Mis Clases */}
       <div style={{ marginTop: '2rem' }}>
         <h3 style={{
           fontSize: '1.25rem',
@@ -289,70 +292,122 @@ function PortalAlumno() {
           Mis Clases
         </h3>
 
-        {inscripciones.length === 0 ? (
+        {inscripciones.length === 0 && recuperaciones.length === 0 ? (
           <Card>
             <div style={{ textAlign: 'center', padding: '2rem', color: colors.gray[500] }}>
-              No estas inscripto en ninguna clase
+              No estas inscripta en ninguna clase
             </div>
           </Card>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {inscripciones.flatMap((insc) => {
-              if (!insc.turno || !insc.proximasFechas) return [];
-              return insc.proximasFechas.map((f) => ({
-                insc, fecha: parseFechaBackend(f), fechaStr: f
+            {(() => {
+              // Clases regulares
+              const regulares = inscripciones.flatMap((insc) => {
+                if (!insc.turno || !insc.proximasFechas) return [];
+                return insc.proximasFechas.map((f) => ({
+                  tipo: 'regular', insc, fecha: parseFechaBackend(f), fechaStr: f,
+                  turno: insc.turno
+                }));
+              });
+              // Clases canceladas
+              const canceladas = inscripciones.flatMap((insc) => {
+                if (!insc.turno || !insc.fechasCanceladas) return [];
+                return insc.fechasCanceladas.map((f) => ({
+                  tipo: 'cancelada', insc, fecha: parseFechaBackend(f), fechaStr: f,
+                  turno: insc.turno
+                }));
+              });
+              // Clases de recuperación
+              const recups = recuperaciones.map((r) => ({
+                tipo: 'recuperacion', insc: null, fecha: parseFechaBackend(r.fecha), fechaStr: r.fecha,
+                turno: r.turno, recupId: r.id
               }));
-            }).sort((a, b) => a.fecha - b.fecha).slice(0, 5).map(({ insc, fecha, fechaStr }, idx) => {
-              const ahora = new Date();
-              const horasRestantes = (fecha - ahora) / (1000 * 60 * 60);
-              const puedeAccionar = horasRestantes >= horasAnticipacion;
 
-              return (
-                <Card key={`${insc.id}-${idx}`}>
-                  <div style={{
-                    padding: '1rem',
-                    borderLeft: `4px solid ${colors.primary}`
-                  }}>
-                    <div style={{ fontWeight: '600', color: colors.gray[900], marginBottom: '0.25rem' }}>
-                      {formatearFechaCorta(fecha)}
-                    </div>
-                    <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-                      {insc.turno.horaInicio} - {insc.turno.horaFin}
-                    </div>
-                    <button
-                      onClick={() => handleCancelarClase(insc.id, fechaStr)}
-                      disabled={!puedeAccionar}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        backgroundColor: puedeAccionar ? colors.error : colors.gray[300],
-                        color: colors.white,
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: puedeAccionar ? 'pointer' : 'not-allowed',
-                        fontSize: '0.75rem',
-                        fontWeight: '500'
-                      }}
-                    >
-                      Cancelar clase
-                    </button>
-                    {!puedeAccionar && (
+              return [...regulares, ...canceladas, ...recups]
+                .sort((a, b) => a.fecha - b.fecha)
+                .slice(0, 8)
+                .map((item, idx) => {
+                  const borderColor = item.tipo === 'cancelada' ? colors.error
+                    : item.tipo === 'recuperacion' ? colors.warning
+                    : colors.primary;
+
+                  return (
+                    <Card key={`${item.tipo}-${idx}`}>
                       <div style={{
-                        marginTop: '0.5rem',
-                        fontSize: '0.7rem',
-                        color: colors.gray[500],
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem'
+                        padding: '1rem',
+                        borderLeft: `4px solid ${borderColor}`,
+                        opacity: item.tipo === 'cancelada' ? 0.7 : 1
                       }}>
-                        <AlertCircle size={12} />
-                        Requiere {horasAnticipacion}hs de anticipacion
+                        {/* Badge */}
+                        {item.tipo !== 'regular' && (
+                          <div style={{
+                            display: 'inline-block',
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.65rem',
+                            fontWeight: '700',
+                            marginBottom: '0.5rem',
+                            backgroundColor: item.tipo === 'cancelada' ? colors.error + '20' : colors.warning + '20',
+                            color: item.tipo === 'cancelada' ? colors.error : colors.warning
+                          }}>
+                            {item.tipo === 'cancelada' ? 'Cancelada' : 'Recuperacion'}
+                          </div>
+                        )}
+                        <div style={{
+                          fontWeight: '600',
+                          color: colors.gray[900],
+                          marginBottom: '0.25rem',
+                          textDecoration: item.tipo === 'cancelada' ? 'line-through' : 'none'
+                        }}>
+                          {formatearFechaCorta(item.fecha)}
+                        </div>
+                        <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                          {item.turno.horaInicio} - {item.turno.horaFin}
+                        </div>
+                        {item.tipo === 'regular' && (() => {
+                          const ahora = new Date();
+                          const horasRestantes = (item.fecha - ahora) / (1000 * 60 * 60);
+                          const puedeAccionar = horasRestantes >= horasAnticipacion;
+                          return (
+                            <>
+                              <button
+                                onClick={() => handleCancelarClase(item.insc.id, item.fechaStr)}
+                                disabled={!puedeAccionar}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.5rem',
+                                  backgroundColor: puedeAccionar ? colors.error : colors.gray[300],
+                                  color: colors.white,
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: puedeAccionar ? 'pointer' : 'not-allowed',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Cancelar clase
+                              </button>
+                              {!puedeAccionar && (
+                                <div style={{
+                                  marginTop: '0.5rem',
+                                  fontSize: '0.7rem',
+                                  color: colors.gray[500],
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem'
+                                }}>
+                                  <AlertCircle size={12} />
+                                  Requiere {horasAnticipacion}hs de anticipacion
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
+                    </Card>
+                  );
+                });
+            })()}
           </div>
         )}
       </div>

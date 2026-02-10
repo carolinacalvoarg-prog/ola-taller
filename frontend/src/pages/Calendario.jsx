@@ -23,6 +23,7 @@ function Calendario() {
 
   // Estado alumno
   const [inscripciones, setInscripciones] = useState([]);
+  const [recuperaciones, setRecuperaciones] = useState([]);
   const [alumnoData, setAlumnoData] = useState(null);
   const [horasAnticipacion, setHorasAnticipacion] = useState(24);
   const [cancelandoId, setCancelandoId] = useState(null);
@@ -36,14 +37,16 @@ function Calendario() {
     try {
       setLoading(true);
       if (esAlumno && user?.alumnoId) {
-        const [inscRes, turnosRes, diasRes, alumnoRes, configRes] = await Promise.all([
+        const [inscRes, turnosRes, diasRes, alumnoRes, configRes, recupRes] = await Promise.all([
           inscripcionesService.getByAlumno(user.alumnoId),
           turnosService.getAllConFechas(),
           diasSinClaseService.getByMes(anio, mes),
           alumnosService.getById(user.alumnoId),
-          configuracionService.get('HorasAnticipacionCancelacion')
+          configuracionService.get('HorasAnticipacionCancelacion'),
+          inscripcionesService.getRecuperacionesByAlumno(user.alumnoId)
         ]);
         setInscripciones(inscRes.data || []);
+        setRecuperaciones(recupRes.data || []);
         setTurnos(turnosRes.data || []);
         setDiasSinClase(diasRes.data || []);
         setAlumnoData(alumnoRes.data);
@@ -92,6 +95,40 @@ function Calendario() {
     });
     return mapa;
   }, [inscripciones]);
+
+  // Lookup: mis clases canceladas por fecha
+  const misCanceladasPorFecha = useMemo(() => {
+    const mapa = {};
+    inscripciones.forEach(insc => {
+      if (!insc.fechasCanceladas || !insc.turno) return;
+      insc.fechasCanceladas.forEach(f => {
+        const fechaStr = f.slice(0, 10);
+        if (!mapa[fechaStr]) mapa[fechaStr] = [];
+        mapa[fechaStr].push({
+          turnoId: insc.turnoId,
+          horaInicio: insc.turno.horaInicio,
+          horaFin: insc.turno.horaFin
+        });
+      });
+    });
+    return mapa;
+  }, [inscripciones]);
+
+  // Lookup: mis recuperaciones por fecha
+  const misRecuperacionesPorFecha = useMemo(() => {
+    const mapa = {};
+    recuperaciones.forEach(r => {
+      if (!r.turno) return;
+      const fechaStr = r.fecha.slice(0, 10);
+      if (!mapa[fechaStr]) mapa[fechaStr] = [];
+      mapa[fechaStr].push({
+        turnoId: r.turnoId,
+        horaInicio: r.turno.horaInicio,
+        horaFin: r.turno.horaFin
+      });
+    });
+    return mapa;
+  }, [recuperaciones]);
 
   // Lookup: turnos disponibles por fecha (usa cupos por fecha del backend)
   const turnosDisponiblesPorFecha = useMemo(() => {
@@ -268,16 +305,23 @@ function Calendario() {
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <span style={{
               width: 10, height: 10, borderRadius: '50%',
-              backgroundColor: colors.success, display: 'inline-block'
+              backgroundColor: colors.error, display: 'inline-block'
             }} />
-            Turno disponible
+            Cancelada
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <span style={{
               width: 10, height: 10, borderRadius: '50%',
-              backgroundColor: colors.error, display: 'inline-block'
+              backgroundColor: colors.warning, display: 'inline-block'
             }} />
-            Sin clase
+            Recuperacion
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              backgroundColor: colors.success, display: 'inline-block'
+            }} />
+            Disponible
           </span>
           <span style={{
             marginLeft: 'auto',
@@ -365,7 +409,10 @@ function Calendario() {
 
             // Datos alumno para esta celda
             const misClases = esAlumno ? (misClasesPorFecha[fechaStr] || []) : [];
+            const misCanceladas = esAlumno ? (misCanceladasPorFecha[fechaStr] || []) : [];
+            const misRecups = esAlumno ? (misRecuperacionesPorFecha[fechaStr] || []) : [];
             const turnosDisp = esAlumno ? (turnosDisponiblesPorFecha[fechaStr] || []) : [];
+            const tieneAlgo = misClases.length > 0 || misCanceladas.length > 0 || misRecups.length > 0;
 
             return (
               <div
@@ -374,7 +421,7 @@ function Calendario() {
                 style={{
                   minHeight: '80px',
                   padding: '0.35rem',
-                  backgroundColor: esSinClase ? colors.error + '20' : esHoy ? colors.primary + '15' : misClases.length > 0 ? colors.primary + '10' : colors.gray[50],
+                  backgroundColor: esSinClase ? colors.error + '20' : esHoy ? colors.primary + '15' : tieneAlgo ? colors.primary + '10' : colors.gray[50],
                   border: esHoy ? `2px solid ${colors.primary}` : `1px solid ${colors.gray[200]}`,
                   borderRadius: '6px',
                   cursor: esAdmin ? 'pointer' : 'default',
@@ -465,6 +512,42 @@ function Calendario() {
                             </div>
                           );
                         })}
+
+                        {/* Clases canceladas */}
+                        {misCanceladas.map((c, i) => (
+                          <div key={`canc-${i}`} style={{
+                            display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.6rem'
+                          }}>
+                            <span style={{
+                              width: 6, height: 6, borderRadius: '50%',
+                              backgroundColor: colors.error, flexShrink: 0
+                            }} />
+                            <span style={{
+                              color: colors.gray[500], flex: 1, textDecoration: 'line-through',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                            }}>
+                              {c.horaInicio}
+                            </span>
+                          </div>
+                        ))}
+
+                        {/* Recuperaciones */}
+                        {misRecups.map((r, i) => (
+                          <div key={`recup-${i}`} style={{
+                            display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.6rem'
+                          }}>
+                            <span style={{
+                              width: 6, height: 6, borderRadius: '50%',
+                              backgroundColor: colors.warning, flexShrink: 0
+                            }} />
+                            <span style={{
+                              color: colors.warning, flex: 1, fontWeight: '600',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                            }}>
+                              {r.horaInicio}
+                            </span>
+                          </div>
+                        ))}
 
                         {/* Turnos disponibles */}
                         {turnosDisp.map(t => {
