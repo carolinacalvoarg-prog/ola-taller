@@ -176,10 +176,11 @@ function PortalAlumno() {
     });
   });
 
-  // Turnos que tienen al menos una fecha con cupos disponibles
-  const turnosConCupos = turnos.filter(turno =>
-    turno.proximasFechas?.some(pf => (pf.cuposDisponibles || 0) > 0)
-  );
+  // Set de recuperaciones por turno-fecha
+  const recuperacionesPorTurnoFecha = new Set();
+  recuperaciones.forEach(r => {
+    recuperacionesPorTurnoFecha.add(`${r.turnoId}-${r.fecha.slice(0, 10)}`);
+  });
 
   if (loading) {
     return (
@@ -464,62 +465,80 @@ function PortalAlumno() {
         )}
 
         {(() => {
-          const items = turnosConCupos.flatMap((turno) => {
+          const items = turnos.flatMap((turno) => {
             if (!turno.proximasFechas) return [];
             return turno.proximasFechas
-              .filter(pf => (pf.cuposDisponibles || 0) > 0)
               .filter(pf => !inscriptoPorTurnoYFecha.has(`${turno.id}-${pf.fecha.slice(0, 10)}`))
-              .map((pf) => ({ turno, fecha: parseFechaBackend(pf.fecha), fechaISO: pf.fecha.slice(0, 10), cuposDisponibles: pf.cuposDisponibles }));
-          }).sort((a, b) => a.fecha - b.fecha).slice(0, 5);
+              .filter(pf => !recuperacionesPorTurnoFecha.has(`${turno.id}-${pf.fecha.slice(0, 10)}`))
+              .map((pf) => ({ turno, fecha: parseFechaBackend(pf.fecha), fechaISO: pf.fecha.slice(0, 10), cuposDisponibles: pf.cuposDisponibles || 0 }));
+          }).sort((a, b) => a.fecha - b.fecha).slice(0, 10);
           return items.length === 0 ? (
           <Card>
             <div style={{ textAlign: 'center', padding: '2rem', color: colors.gray[500] }}>
-              No hay turnos con cupos disponibles en este momento
+              No hay turnos programados
             </div>
           </Card>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
             {items.map(({ turno, fecha, fechaISO, cuposDisponibles }, idx) => {
               const tieneClasesPendientes = (alumnoData?.clasesPendientesRecuperar || 0) > 0;
+              const disponible = cuposDisponibles > 0;
               const itemKey = `${turno.id}-${fechaISO}`;
               return (
                 <Card key={`${turno.id}-${idx}`}>
                   <div style={{
                     padding: '1rem',
-                    borderLeft: `4px solid ${tieneClasesPendientes ? colors.success : colors.gray[300]}`
+                    borderLeft: `4px solid ${disponible ? (tieneClasesPendientes ? colors.success : colors.gray[300]) : colors.gray[300]}`,
+                    opacity: disponible ? 1 : 0.6
                   }}>
-                    <div style={{ fontWeight: '600', color: colors.gray[900], marginBottom: '0.25rem' }}>
+                    <div style={{ fontWeight: '600', color: disponible ? colors.gray[900] : colors.gray[500], marginBottom: '0.25rem' }}>
                       {formatearFechaCorta(fecha)}
                     </div>
-                    <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    <div style={{ color: disponible ? colors.gray[600] : colors.gray[400], fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                       {turno.horaInicio} - {turno.horaFin}
                     </div>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: cuposDisponibles > 3 ? colors.success : colors.warning,
-                      fontWeight: '500',
-                      marginBottom: '0.75rem'
-                    }}>
-                      {cuposDisponibles} cupo{cuposDisponibles !== 1 ? 's' : ''} disponible{cuposDisponibles !== 1 ? 's' : ''}
-                    </div>
-                    <button
-                      onClick={() => handleInscribirRecuperacion(turno.id, fechaISO)}
-                      disabled={!tieneClasesPendientes || inscribiendo === itemKey}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        backgroundColor: tieneClasesPendientes ? colors.success : colors.gray[300],
-                        color: colors.white,
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: tieneClasesPendientes ? 'pointer' : 'not-allowed',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        opacity: inscribiendo === itemKey ? 0.7 : 1
-                      }}
-                    >
-                      {inscribiendo === itemKey ? 'Inscribiendo...' : 'Inscribirme'}
-                    </button>
+                    {disponible ? (
+                      <>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: cuposDisponibles > 3 ? colors.success : colors.warning,
+                          fontWeight: '500',
+                          marginBottom: '0.75rem'
+                        }}>
+                          {cuposDisponibles} cupo{cuposDisponibles !== 1 ? 's' : ''} disponible{cuposDisponibles !== 1 ? 's' : ''}
+                        </div>
+                        <button
+                          onClick={() => handleInscribirRecuperacion(turno.id, fechaISO)}
+                          disabled={!tieneClasesPendientes || inscribiendo === itemKey}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            backgroundColor: tieneClasesPendientes ? colors.success : colors.gray[300],
+                            color: colors.white,
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: tieneClasesPendientes ? 'pointer' : 'not-allowed',
+                            fontSize: '0.75rem',
+                            fontWeight: '500',
+                            opacity: inscribiendo === itemKey ? 0.7 : 1
+                          }}
+                        >
+                          {inscribiendo === itemKey ? 'Inscribiendo...' : 'Inscribirme'}
+                        </button>
+                      </>
+                    ) : (
+                      <div style={{
+                        display: 'inline-block',
+                        padding: '0.2rem 0.6rem',
+                        borderRadius: '4px',
+                        fontSize: '0.7rem',
+                        fontWeight: '600',
+                        backgroundColor: colors.gray[200],
+                        color: colors.gray[500]
+                      }}>
+                        Completo
+                      </div>
+                    )}
                   </div>
                 </Card>
               );

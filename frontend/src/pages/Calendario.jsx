@@ -134,28 +134,29 @@ function Calendario() {
     return mapa;
   }, [recuperaciones, turnosFijos]);
 
-  // Lookup: turnos disponibles por fecha (usa cupos por fecha del backend)
+  // Lookup: turnos por fecha (incluye llenos para mostrar "Completo")
   const turnosDisponiblesPorFecha = useMemo(() => {
     const mapa = {};
     turnos.forEach(turno => {
       if (!turno.proximasFechas) return;
       turno.proximasFechas.forEach(pf => {
-        if ((pf.cuposDisponibles || 0) <= 0) return;
         const fechaStr = pf.fecha.slice(0, 10);
         const yaInscriptoEnFecha = (misClasesPorFecha[fechaStr] || []).some(c => c.turnoId === turno.id);
         if (yaInscriptoEnFecha) return;
+        const yaRecuperandoEnFecha = (misRecuperacionesPorFecha[fechaStr] || []).some(r => r.turnoId === turno.id);
+        if (yaRecuperandoEnFecha) return;
         if (!mapa[fechaStr]) mapa[fechaStr] = [];
         mapa[fechaStr].push({
           turnoId: turno.id,
           horaInicio: turno.horaInicio,
           horaFin: turno.horaFin,
-          cuposDisponibles: pf.cuposDisponibles,
+          cuposDisponibles: pf.cuposDisponibles || 0,
           fechaStr
         });
       });
     });
     return mapa;
-  }, [turnos, misClasesPorFecha]);
+  }, [turnos, misClasesPorFecha, misRecuperacionesPorFecha]);
 
   // Handlers alumno
   const handleCancelar = async (inscripcionId, fecha) => {
@@ -340,6 +341,13 @@ function Calendario() {
               backgroundColor: colors.success, display: 'inline-block'
             }} />
             Disponible
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              backgroundColor: colors.gray[400], display: 'inline-block'
+            }} />
+            Completo
           </span>
           <span style={{
             marginLeft: 'auto',
@@ -593,8 +601,9 @@ function Calendario() {
                           );
                         })}
 
-                        {/* Turnos disponibles */}
+                        {/* Turnos disponibles y completos */}
                         {turnosDisp.map(t => {
+                          const disponible = t.cuposDisponibles > 0;
                           const itemKey = `${t.turnoId}-${t.fechaStr}`;
                           const estaInscribiendo = inscribiendoTurnoId === itemKey;
                           return (
@@ -603,12 +612,15 @@ function Calendario() {
                             }}>
                               <span style={{
                                 width: 6, height: 6, borderRadius: '50%',
-                                backgroundColor: colors.success, flexShrink: 0
+                                backgroundColor: disponible ? colors.success : colors.gray[400], flexShrink: 0
                               }} />
-                              <span style={{ color: colors.gray[600], flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                color: disponible ? colors.gray[600] : colors.gray[400],
+                                flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                              }}>
                                 {t.horaInicio}
                               </span>
-                              {clasesPendientes > 0 && (
+                              {disponible && clasesPendientes > 0 && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleRecuperar(t.turnoId, t.fechaStr); }}
                                   disabled={estaInscribiendo}
@@ -627,6 +639,13 @@ function Calendario() {
                                 >
                                   +
                                 </button>
+                              )}
+                              {!disponible && (
+                                <span style={{
+                                  fontSize: '0.5rem', color: colors.gray[400], fontWeight: '600', flexShrink: 0
+                                }}>
+                                  Completo
+                                </span>
                               )}
                             </div>
                           );
