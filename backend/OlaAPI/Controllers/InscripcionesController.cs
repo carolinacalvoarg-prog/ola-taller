@@ -220,6 +220,47 @@ public class InscripcionesController : ControllerBase
             return BadRequest("El turno no existe o no está activo.");
 
         var fechaRecuperacion = DateTime.SpecifyKind(dto.Fecha.Date, DateTimeKind.Utc);
+        var fechaSiguiente = fechaRecuperacion.AddDays(1);
+
+        // Si el alumno tiene inscripción activa en este turno y una ausencia para esta fecha,
+        // es un "des-cancelar": simplemente eliminar la ausencia
+        var inscripcionPropia = await _context.Inscripciones
+            .FirstOrDefaultAsync(i => i.AlumnoId == dto.AlumnoId && i.TurnoId == dto.TurnoId && i.Activa);
+
+        if (inscripcionPropia != null)
+        {
+            var ausencia = await _context.AusenciasProgramadas
+                .FirstOrDefaultAsync(a => a.InscripcionId == inscripcionPropia.Id
+                    && a.Fecha >= fechaRecuperacion && a.Fecha < fechaSiguiente);
+
+            if (ausencia != null)
+            {
+                _context.AusenciasProgramadas.Remove(ausencia);
+                alumno.ClasesPendientesRecuperar--;
+
+                _context.Actividades.Add(new Actividad
+                {
+                    Tipo = "recuperacion",
+                    AlumnoId = dto.AlumnoId,
+                    TurnoId = dto.TurnoId,
+                    Fecha = DateTime.UtcNow
+                });
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Id = 0,
+                    dto.AlumnoId,
+                    dto.TurnoId,
+                    Fecha = fechaRecuperacion,
+                    FechaRegistro = DateTime.UtcNow,
+                    ClasesPendientesRecuperar = alumno.ClasesPendientesRecuperar
+                });
+            }
+
+            return BadRequest("Ya estás inscripta en este turno para esa fecha.");
+        }
 
         // Verificar que no exista ya una recuperación para este alumno/turno/fecha
         var yaExiste = await _context.RecuperacionesProgramadas
@@ -228,9 +269,7 @@ public class InscripcionesController : ControllerBase
             return BadRequest("Ya tienes una recuperación programada para este turno en esa fecha.");
 
         // Calcular cupos disponibles para esa fecha específica
-        // cuposDisponibles = cuposMax - inscripcionesActivas + ausenciasEnFecha - recuperacionesEnFecha
         var inscripcionesActivas = turno.Inscripciones.Count;
-        var fechaSiguiente = fechaRecuperacion.AddDays(1);
         var ausenciasEnFecha = await _context.AusenciasProgramadas
             .Include(a => a.Inscripcion)
             .CountAsync(a => a.Inscripcion!.TurnoId == dto.TurnoId
@@ -248,16 +287,13 @@ public class InscripcionesController : ControllerBase
         {
             AlumnoId = dto.AlumnoId,
             TurnoId = dto.TurnoId,
-            Fecha = DateTime.SpecifyKind(fechaRecuperacion, DateTimeKind.Utc),
+            Fecha = fechaRecuperacion,
             FechaRegistro = DateTime.UtcNow
         };
 
         _context.RecuperacionesProgramadas.Add(recuperacion);
-
-        // Decrementar clases pendientes de recuperar
         alumno.ClasesPendientesRecuperar--;
 
-        // Registrar actividad
         _context.Actividades.Add(new Actividad
         {
             Tipo = "recuperacion",
