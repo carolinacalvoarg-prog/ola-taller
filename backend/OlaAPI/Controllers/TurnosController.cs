@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OlaCore.Models;
 using OlaInfrastructure.Data;
+using OlaAPI.Helpers;
 
 namespace OlaAPI.Controllers;
 
@@ -53,7 +54,7 @@ public class TurnosController : ControllerBase
             return Ok(turnosOrdenados);
 
         // Calcular próximas fechas por turno (mes actual + siguiente), excluyendo días sin clase
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = TimeHelper.HoyArgentina();
         var hasta = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
         var diasSinClaseSet = new HashSet<DateTime>(
             await _context.DiasSinClase
@@ -87,8 +88,8 @@ public class TurnosController : ControllerBase
             var actual = hoy;
             var diaActual = (int)actual.DayOfWeek;
             var diasSumar = (diaSemana - diaActual + 7) % 7;
-            // Si es hoy, incluir solo si la clase aún no terminó (hora Argentina UTC-3)
-            var ahoraArgentina = DateTime.UtcNow.AddHours(-3);
+            // Si es hoy, incluir solo si la clase aún no terminó (hora Argentina)
+            var ahoraArgentina = TimeHelper.AhoraArgentina();
             if (diasSumar == 0 && ahoraArgentina.TimeOfDay >= t.HoraFin)
                 diasSumar = 7;
             actual = actual.AddDays(diasSumar);

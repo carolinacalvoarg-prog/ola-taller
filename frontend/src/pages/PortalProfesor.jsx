@@ -8,11 +8,15 @@ import { Calendar, Clock, Users, Check, X } from 'lucide-react';
 
 const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
+// Formatear fecha local como YYYY-MM-DD (evita desfase UTC de toISOString)
+const formatLocalDate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 function PortalProfesor() {
   const { user } = useAuth();
   const [turnos, setTurnos] = useState([]);
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(null);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(formatLocalDate(new Date()));
   const [alumnosDelDia, setAlumnosDelDia] = useState([]);
   const [asistencias, setAsistencias] = useState({});
   const [asistenciasExistentes, setAsistenciasExistentes] = useState([]);
@@ -319,7 +323,7 @@ function PortalProfesor() {
             />
           </div>
 
-          {turnoSeleccionado && esTurnoActual(turnoSeleccionado) && fechaSeleccionada === new Date().toISOString().split('T')[0] && (
+          {turnoSeleccionado && esTurnoActual(turnoSeleccionado) && fechaSeleccionada === formatLocalDate(new Date()) && (
             <div style={{
               padding: '0.5rem 1rem',
               backgroundColor: colors.success + '20',
@@ -473,7 +477,7 @@ function PortalProfesor() {
                     cursor: 'pointer'
                   }}
                   onClick={() => {
-                    const fecha = new Date(registro.fecha).toISOString().split('T')[0];
+                    const fecha = registro.fecha.slice(0, 10);
                     setFechaSeleccionada(fecha);
                   }}
                   >

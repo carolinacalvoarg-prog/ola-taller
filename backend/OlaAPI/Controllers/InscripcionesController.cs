@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OlaCore.Models;
 using OlaInfrastructure.Data;
+using OlaAPI.Helpers;
 
 namespace OlaAPI.Controllers;
 
@@ -66,8 +67,8 @@ public class InscripcionesController : ControllerBase
         // Primer día de la semana que coincide con el turno (hoy o después)
         var diaActual = (int)actual.DayOfWeek;
         var diasSumar = (diaSemana - diaActual + 7) % 7;
-        // Si es hoy, incluir solo si la clase aún no terminó (hora Argentina UTC-3)
-        var ahoraArgentina = DateTime.UtcNow.AddHours(-3);
+        // Si es hoy, incluir solo si la clase aún no terminó (hora Argentina)
+        var ahoraArgentina = TimeHelper.AhoraArgentina();
         if (diasSumar == 0 && ahoraArgentina.TimeOfDay >= turno.HoraFin)
             diasSumar = 7;
         actual = actual.AddDays(diasSumar);
@@ -324,7 +325,7 @@ public class InscripcionesController : ControllerBase
             .Where(i => i.AlumnoId == alumnoId && i.Activa)
             .ToListAsync();
 
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = TimeHelper.HoyArgentina();
         var hasta = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
 
         // Cargar ausencias futuras de todas las inscripciones del alumno
@@ -371,7 +372,7 @@ public class InscripcionesController : ControllerBase
     [HttpGet("alumno/{alumnoId}/recuperaciones")]
     public async Task<ActionResult<IEnumerable<object>>> GetRecuperacionesByAlumno(int alumnoId)
     {
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = TimeHelper.HoyArgentina();
         var recuperaciones = await _context.RecuperacionesProgramadas
             .Include(r => r.Turno)
             .Where(r => r.AlumnoId == alumnoId && r.Fecha >= hoy)
@@ -441,7 +442,7 @@ public class InscripcionesController : ControllerBase
         if (!inscripcion.Activa)
             return BadRequest("La inscripción no está activa.");
 
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = TimeHelper.HoyArgentina();
 
         List<DateTime> fechas;
         if (dto.Fecha.HasValue)

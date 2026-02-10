@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OlaCore.Models;
 using OlaInfrastructure.Data;
+using OlaAPI.Helpers;
 
 namespace OlaAPI.Controllers;
 
@@ -143,7 +144,7 @@ public class AsistenciasController : ControllerBase
     [HttpGet("historial/turno/{turnoId}")]
     public async Task<ActionResult<IEnumerable<object>>> GetHistorialAsistenciasByTurno(int turnoId)
     {
-        var unMesAtras = DateTime.UtcNow.AddMonths(-1);
+        var unMesAtras = TimeHelper.AhoraArgentina().AddMonths(-1);
 
         var historial = await _context.Asistencias
             .Where(a => a.TurnoId == turnoId && a.Fecha >= unMesAtras)
