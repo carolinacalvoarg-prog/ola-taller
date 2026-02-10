@@ -20,6 +20,7 @@ public class OlaDbContext : DbContext
     public DbSet<Actividad> Actividades { get; set; }
     public DbSet<DiaSinClase> DiasSinClase { get; set; }
     public DbSet<AusenciaProgramada> AusenciasProgramadas { get; set; }
+    public DbSet<RecuperacionProgramada> RecuperacionesProgramadas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -163,6 +164,20 @@ public class OlaDbContext : DbContext
                   .HasForeignKey(e => e.InscripcionId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.InscripcionId, e.Fecha }).IsUnique();
+        });
+
+        modelBuilder.Entity<RecuperacionProgramada>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Alumno)
+                  .WithMany()
+                  .HasForeignKey(e => e.AlumnoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Turno)
+                  .WithMany()
+                  .HasForeignKey(e => e.TurnoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.AlumnoId, e.TurnoId, e.Fecha }).IsUnique();
         });
     }
 }

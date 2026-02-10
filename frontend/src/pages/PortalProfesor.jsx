@@ -13,6 +13,7 @@ function PortalProfesor() {
   const [turnos, setTurnos] = useState([]);
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0]);
+  const [alumnosDelDia, setAlumnosDelDia] = useState([]);
   const [asistencias, setAsistencias] = useState({});
   const [asistenciasExistentes, setAsistenciasExistentes] = useState([]);
   const [historial, setHistorial] = useState([]);
@@ -28,6 +29,7 @@ function PortalProfesor() {
 
   useEffect(() => {
     if (turnoSeleccionado) {
+      fetchAlumnosDelDia();
       fetchAsistenciasExistentes();
       fetchHistorial();
     }
@@ -116,6 +118,17 @@ function PortalProfesor() {
     }
 
     return null;
+  };
+
+  const fetchAlumnosDelDia = async () => {
+    if (!turnoSeleccionado) return;
+    try {
+      const response = await inscripcionesService.getAlumnosPorTurnoYFecha(turnoSeleccionado.id, fechaSeleccionada);
+      setAlumnosDelDia(response.data || []);
+    } catch (error) {
+      console.error('Error al cargar alumnos del día:', error);
+      setAlumnosDelDia(turnoSeleccionado.alumnos || []);
+    }
   };
 
   const fetchAsistenciasExistentes = async () => {
@@ -328,16 +341,16 @@ function PortalProfesor() {
       {/* Lista de Alumnos */}
       {turnoSeleccionado && (
         <div style={{ marginTop: '1.5rem' }}>
-          <Card title={`Alumnos - ${diasSemana[turnoSeleccionado.diaSemana]} ${turnoSeleccionado.horaInicio}`}>
-            {turnoSeleccionado.alumnos?.length === 0 ? (
+          <Card title={`Alumnos - ${diasSemana[turnoSeleccionado.diaSemana]} ${turnoSeleccionado.horaInicio} - ${fechaSeleccionada}`}>
+            {alumnosDelDia.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '1rem', color: colors.gray[500] }}>
-                No hay alumnos inscriptos en esta clase
+                No hay alumnos para esta clase en esta fecha
               </div>
             ) : (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {turnoSeleccionado.alumnos?.map(alumno => (
-                    <div key={alumno.id} style={{
+                  {alumnosDelDia.map(alumno => (
+                    <div key={`${alumno.id}-${alumno.tipo || 'regular'}`} style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
@@ -351,8 +364,20 @@ function PortalProfesor() {
                       }`
                     }}>
                       <div>
-                        <div style={{ fontWeight: '500', color: colors.gray[900] }}>
+                        <div style={{ fontWeight: '500', color: colors.gray[900], display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           {alumno.nombre} {alumno.apellido}
+                          {alumno.tipo === 'recuperacion' && (
+                            <span style={{
+                              fontSize: '0.65rem',
+                              backgroundColor: colors.warning + '30',
+                              color: colors.warning,
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '4px',
+                              fontWeight: '600'
+                            }}>
+                              Recupera
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>

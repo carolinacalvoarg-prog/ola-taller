@@ -105,17 +105,18 @@ function PortalAlumno() {
     }
   };
 
-  const handleInscribirRecuperacion = async (turnoId) => {
+  const handleInscribirRecuperacion = async (turnoId, fecha) => {
     if (!alumnoData || alumnoData.clasesPendientesRecuperar <= 0) {
       showToast('No tienes clases pendientes de recuperar', 'error');
       return;
     }
 
     try {
-      setInscribiendo(turnoId);
+      setInscribiendo(`${turnoId}-${fecha}`);
       await inscripcionesService.inscribirRecuperacion({
         alumnoId: user.alumnoId,
-        turnoId
+        turnoId,
+        fecha
       });
       showToast('Inscripcion a clase de recuperacion exitosa', 'success');
       fetchData();
@@ -359,7 +360,7 @@ function PortalAlumno() {
             return turno.proximasFechas
               .filter(pf => (pf.cuposDisponibles || 0) > 0)
               .filter(pf => !inscriptoPorTurnoYFecha.has(`${turno.id}-${pf.fecha.slice(0, 10)}`))
-              .map((pf) => ({ turno, fecha: parseFechaBackend(pf.fecha), cuposDisponibles: pf.cuposDisponibles }));
+              .map((pf) => ({ turno, fecha: parseFechaBackend(pf.fecha), fechaISO: pf.fecha.slice(0, 10), cuposDisponibles: pf.cuposDisponibles }));
           }).sort((a, b) => a.fecha - b.fecha).slice(0, 5);
           return items.length === 0 ? (
           <Card>
@@ -369,8 +370,9 @@ function PortalAlumno() {
           </Card>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {items.map(({ turno, fecha, cuposDisponibles }, idx) => {
+            {items.map(({ turno, fecha, fechaISO, cuposDisponibles }, idx) => {
               const tieneClasesPendientes = (alumnoData?.clasesPendientesRecuperar || 0) > 0;
+              const itemKey = `${turno.id}-${fechaISO}`;
               return (
                 <Card key={`${turno.id}-${idx}`}>
                   <div style={{
@@ -392,8 +394,8 @@ function PortalAlumno() {
                       {cuposDisponibles} cupo{cuposDisponibles !== 1 ? 's' : ''} disponible{cuposDisponibles !== 1 ? 's' : ''}
                     </div>
                     <button
-                      onClick={() => handleInscribirRecuperacion(turno.id)}
-                      disabled={!tieneClasesPendientes || inscribiendo === turno.id}
+                      onClick={() => handleInscribirRecuperacion(turno.id, fechaISO)}
+                      disabled={!tieneClasesPendientes || inscribiendo === itemKey}
                       style={{
                         width: '100%',
                         padding: '0.5rem',
@@ -404,10 +406,10 @@ function PortalAlumno() {
                         cursor: tieneClasesPendientes ? 'pointer' : 'not-allowed',
                         fontSize: '0.75rem',
                         fontWeight: '500',
-                        opacity: inscribiendo === turno.id ? 0.7 : 1
+                        opacity: inscribiendo === itemKey ? 0.7 : 1
                       }}
                     >
-                      {inscribiendo === turno.id ? 'Inscribiendo...' : 'Inscribirme'}
+                      {inscribiendo === itemKey ? 'Inscribiendo...' : 'Inscribirme'}
                     </button>
                   </div>
                 </Card>

@@ -35,6 +35,7 @@ export const inscripcionesService = {
   create: (inscripcion) => api.post('/inscripciones', inscripcion),
   getByAlumno: (alumnoId) => api.get(`/inscripciones/alumno/${alumnoId}`),
   getByTurno: (turnoId) => api.get(`/inscripciones/turno/${turnoId}`),
+  getAlumnosPorTurnoYFecha: (turnoId, fecha) => api.get(`/inscripciones/turno/${turnoId}/fecha/${fecha}`),
   cancelar: (id) => api.delete(`/inscripciones/${id}`),
   cancelarProximas: (inscripcionId, cantidad, fecha) => api.post('/inscripciones/cancelar-proximas', { inscripcionId, cantidad, ...(fecha && { fecha }) }),
   inscribirRecuperacion: (inscripcion) => api.post('/inscripciones/recuperacion', inscripcion),

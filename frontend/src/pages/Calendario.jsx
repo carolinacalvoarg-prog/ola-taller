@@ -108,7 +108,8 @@ function Calendario() {
           turnoId: turno.id,
           horaInicio: turno.horaInicio,
           horaFin: turno.horaFin,
-          cuposDisponibles: pf.cuposDisponibles
+          cuposDisponibles: pf.cuposDisponibles,
+          fechaStr
         });
       });
     });
@@ -130,16 +131,17 @@ function Calendario() {
     }
   };
 
-  const handleRecuperar = async (turnoId) => {
+  const handleRecuperar = async (turnoId, fecha) => {
     if (!alumnoData || alumnoData.clasesPendientesRecuperar <= 0) {
       setToastAndClose('No tenés clases pendientes de recuperar', 'error');
       return;
     }
     try {
-      setInscribiendoTurnoId(turnoId);
+      setInscribiendoTurnoId(`${turnoId}-${fecha}`);
       await inscripcionesService.inscribirRecuperacion({
         alumnoId: user.alumnoId,
-        turnoId
+        turnoId,
+        fecha
       });
       setToastAndClose('Inscripción a clase de recuperación exitosa');
       fetchDatos();
@@ -466,7 +468,8 @@ function Calendario() {
 
                         {/* Turnos disponibles */}
                         {turnosDisp.map(t => {
-                          const estaInscribiendo = inscribiendoTurnoId === t.turnoId;
+                          const itemKey = `${t.turnoId}-${t.fechaStr}`;
+                          const estaInscribiendo = inscribiendoTurnoId === itemKey;
                           return (
                             <div key={`disp-${t.turnoId}`} style={{
                               display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.6rem'
@@ -480,7 +483,7 @@ function Calendario() {
                               </span>
                               {clasesPendientes > 0 && (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleRecuperar(t.turnoId); }}
+                                  onClick={(e) => { e.stopPropagation(); handleRecuperar(t.turnoId, t.fechaStr); }}
                                   disabled={estaInscribiendo}
                                   title="Inscribirme a recuperación"
                                   style={{
