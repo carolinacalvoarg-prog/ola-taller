@@ -132,6 +132,20 @@ function PortalAlumno() {
     }
   };
 
+  const handleCancelarRecuperacion = async (recupId) => {
+    try {
+      setCancelandoN(recupId);
+      await inscripcionesService.cancelarRecuperacion(recupId);
+      showToast('Recuperacion cancelada. Se devolvio la clase pendiente.', 'success');
+      fetchData();
+    } catch (error) {
+      console.error('Error al cancelar recuperacion:', error);
+      showToast(error.response?.data || 'Error al cancelar la recuperacion', 'error');
+    } finally {
+      setCancelandoN(null);
+    }
+  };
+
   const formatearFecha = (fecha) => {
     const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
     return fecha.toLocaleDateString('es-AR', opciones);
@@ -149,6 +163,9 @@ function PortalAlumno() {
   };
 
   const proximaClase = getProximaClase();
+
+  // Set de turnoIds en los que el alumno tiene inscripción fija
+  const turnosFijos = new Set(inscripciones.map(i => i.turnoId));
 
   // Set de "turnoId-fecha" donde el alumno ya está inscripto
   const inscriptoPorTurnoYFecha = new Set();
@@ -317,11 +334,13 @@ function PortalAlumno() {
                   turno: insc.turno
                 }));
               });
-              // Clases de recuperación
-              const recups = recuperaciones.map((r) => ({
-                tipo: 'recuperacion', insc: null, fecha: parseFechaBackend(r.fecha), fechaStr: r.fecha,
-                turno: r.turno, recupId: r.id
-              }));
+              // Clases de recuperación (excluir las que coinciden con turno fijo)
+              const recups = recuperaciones
+                .filter(r => !turnosFijos.has(r.turnoId))
+                .map((r) => ({
+                  tipo: 'recuperacion', insc: null, fecha: parseFechaBackend(r.fecha), fechaStr: r.fecha,
+                  turno: r.turno, recupId: r.id
+                }));
 
               return [...regulares, ...canceladas, ...recups]
                 .sort((a, b) => a.fecha - b.fecha)
@@ -364,14 +383,18 @@ function PortalAlumno() {
                         <div style={{ color: colors.gray[600], fontSize: '0.875rem', marginBottom: '0.75rem' }}>
                           {item.turno.horaInicio} - {item.turno.horaFin}
                         </div>
-                        {item.tipo === 'regular' && (() => {
+                        {(item.tipo === 'regular' || item.tipo === 'recuperacion') && (() => {
                           const ahora = new Date();
                           const horasRestantes = (item.fecha - ahora) / (1000 * 60 * 60);
                           const puedeAccionar = horasRestantes >= horasAnticipacion;
+                          const esRecup = item.tipo === 'recuperacion';
                           return (
                             <>
                               <button
-                                onClick={() => handleCancelarClase(item.insc.id, item.fechaStr)}
+                                onClick={() => esRecup
+                                  ? handleCancelarRecuperacion(item.recupId)
+                                  : handleCancelarClase(item.insc.id, item.fechaStr)
+                                }
                                 disabled={!puedeAccionar}
                                 style={{
                                   width: '100%',
@@ -385,7 +408,7 @@ function PortalAlumno() {
                                   fontWeight: '500'
                                 }}
                               >
-                                Cancelar clase
+                                {esRecup ? 'Cancelar recuperacion' : 'Cancelar clase'}
                               </button>
                               {!puedeAccionar && (
                                 <div style={{

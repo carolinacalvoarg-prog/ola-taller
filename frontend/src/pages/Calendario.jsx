@@ -114,21 +114,25 @@ function Calendario() {
     return mapa;
   }, [inscripciones]);
 
-  // Lookup: mis recuperaciones por fecha
+  // Set de turnoIds fijos del alumno
+  const turnosFijos = useMemo(() => new Set(inscripciones.map(i => i.turnoId)), [inscripciones]);
+
+  // Lookup: mis recuperaciones por fecha (excluir las que coinciden con turno fijo)
   const misRecuperacionesPorFecha = useMemo(() => {
     const mapa = {};
     recuperaciones.forEach(r => {
-      if (!r.turno) return;
+      if (!r.turno || turnosFijos.has(r.turnoId)) return;
       const fechaStr = r.fecha.slice(0, 10);
       if (!mapa[fechaStr]) mapa[fechaStr] = [];
       mapa[fechaStr].push({
+        recupId: r.id,
         turnoId: r.turnoId,
         horaInicio: r.turno.horaInicio,
         horaFin: r.turno.horaFin
       });
     });
     return mapa;
-  }, [recuperaciones]);
+  }, [recuperaciones, turnosFijos]);
 
   // Lookup: turnos disponibles por fecha (usa cupos por fecha del backend)
   const turnosDisponiblesPorFecha = useMemo(() => {
@@ -163,6 +167,20 @@ function Calendario() {
     } catch (error) {
       console.error('Error al cancelar:', error);
       setToastAndClose(error.response?.data?.message || 'Error al cancelar la clase', 'error');
+    } finally {
+      setCancelandoId(null);
+    }
+  };
+
+  const handleCancelarRecuperacion = async (recupId) => {
+    try {
+      setCancelandoId(recupId);
+      await inscripcionesService.cancelarRecuperacion(recupId);
+      setToastAndClose('Recuperacion cancelada. Se devolvio la clase pendiente.');
+      fetchDatos();
+    } catch (error) {
+      console.error('Error al cancelar recuperacion:', error);
+      setToastAndClose(error.response?.data || 'Error al cancelar', 'error');
     } finally {
       setCancelandoId(null);
     }
@@ -532,22 +550,48 @@ function Calendario() {
                         ))}
 
                         {/* Recuperaciones */}
-                        {misRecups.map((r, i) => (
-                          <div key={`recup-${i}`} style={{
-                            display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.6rem'
-                          }}>
-                            <span style={{
-                              width: 6, height: 6, borderRadius: '50%',
-                              backgroundColor: colors.warning, flexShrink: 0
-                            }} />
-                            <span style={{
-                              color: colors.warning, flex: 1, fontWeight: '600',
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        {misRecups.map((r, i) => {
+                          const fechaRecup = parseFechaBackend(fechaStr);
+                          if (r.horaInicio) {
+                            const [h, m] = r.horaInicio.split(':').map(Number);
+                            fechaRecup.setHours(h, m, 0, 0);
+                          }
+                          const horasRest = (fechaRecup - new Date()) / (1000 * 60 * 60);
+                          const puedeCancelarRecup = horasRest >= horasAnticipacion;
+                          return (
+                            <div key={`recup-${i}`} style={{
+                              display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.6rem'
                             }}>
-                              {r.horaInicio}
-                            </span>
-                          </div>
-                        ))}
+                              <span style={{
+                                width: 6, height: 6, borderRadius: '50%',
+                                backgroundColor: colors.warning, flexShrink: 0
+                              }} />
+                              <span style={{
+                                color: colors.warning, flex: 1, fontWeight: '600',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                              }}>
+                                {r.horaInicio}
+                              </span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleCancelarRecuperacion(r.recupId); }}
+                                disabled={!puedeCancelarRecup}
+                                title={puedeCancelarRecup ? 'Cancelar recuperacion' : `Requiere ${horasAnticipacion}hs`}
+                                style={{
+                                  width: 16, height: 16, padding: 0,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  backgroundColor: puedeCancelarRecup ? colors.error : colors.gray[300],
+                                  color: colors.white,
+                                  border: 'none', borderRadius: '50%',
+                                  cursor: puedeCancelarRecup ? 'pointer' : 'not-allowed',
+                                  fontSize: '0.55rem', fontWeight: '700', lineHeight: 1,
+                                  flexShrink: 0
+                                }}
+                              >
+                                x
+                              </button>
+                            </div>
+                          );
+                        })}
 
                         {/* Turnos disponibles */}
                         {turnosDisp.map(t => {

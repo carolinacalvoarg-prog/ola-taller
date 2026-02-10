@@ -359,6 +359,36 @@ public class InscripcionesController : ControllerBase
         return Ok(recuperaciones);
     }
 
+    // DELETE: api/Inscripciones/recuperacion/5
+    [HttpDelete("recuperacion/{id}")]
+    public async Task<IActionResult> CancelarRecuperacion(int id)
+    {
+        var recuperacion = await _context.RecuperacionesProgramadas
+            .Include(r => r.Alumno)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (recuperacion == null)
+            return NotFound("Recuperación no encontrada.");
+
+        _context.RecuperacionesProgramadas.Remove(recuperacion);
+
+        // Devolver la clase pendiente de recuperar
+        if (recuperacion.Alumno != null)
+            recuperacion.Alumno.ClasesPendientesRecuperar++;
+
+        _context.Actividades.Add(new Actividad
+        {
+            Tipo = "cancelacion_recuperacion",
+            AlumnoId = recuperacion.AlumnoId,
+            TurnoId = recuperacion.TurnoId,
+            Fecha = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     // POST: api/Inscripciones/cancelar-proximas
     [HttpPost("cancelar-proximas")]
     public async Task<ActionResult<object>> CancelarProximasClases(CancelarProximasDto dto)
