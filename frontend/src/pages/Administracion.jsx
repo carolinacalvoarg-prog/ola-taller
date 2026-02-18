@@ -91,12 +91,16 @@ function Administracion() {
     }
   };
 
-  const fetchAlumnosClase = async (clase) => {
+  const fetchAlumnosClase = async (clase, fecha) => {
     setSelectedClase(clase);
     setLoadingAlumnos(true);
     try {
-      const response = await inscripcionesService.getByTurno(clase.id);
-      setAlumnosClase(response.data || []);
+      const fechaStr = fecha || new Date().toISOString().split('T')[0];
+      const response = await inscripcionesService.getAlumnosPorTurnoYFecha(clase.id, fechaStr);
+      const alumnos = response.data || [];
+      const orden = { regular: 0, recuperacion: 1, ausente: 2 };
+      alumnos.sort((a, b) => (orden[a.tipo] ?? 99) - (orden[b.tipo] ?? 99));
+      setAlumnosClase(alumnos);
     } catch (error) {
       console.error('Error al cargar alumnos:', error);
       showToast('Error al cargar los alumnos de la clase', 'error');
@@ -570,28 +574,54 @@ function Administracion() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {alumnosClase.map((inscripcion) => {
-                    const telefono = inscripcion.alumno?.telefono;
+                  {alumnosClase.map((alumno) => {
+                    const telefono = alumno.telefono;
                     const telefonoLimpio = telefono ? telefono.replace(/\D/g, '') : '';
+                    const esAusente = alumno.tipo === 'ausente';
+                    const esRecuperacion = alumno.tipo === 'recuperacion';
 
                     return (
                       <div
-                        key={inscripcion.id}
+                        key={`${alumno.tipo}-${alumno.id}`}
                         style={{
                           padding: '0.75rem 1rem',
                           backgroundColor: colors.gray[50],
                           borderRadius: '8px',
                           display: 'flex',
                           justifyContent: 'space-between',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          opacity: esAusente ? 0.5 : 1
                         }}
                       >
                         <div>
                           <div style={{
                             fontWeight: '500',
-                            color: colors.gray[900]
+                            color: colors.gray[900],
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
                           }}>
-                            {inscripcion.alumno?.nombre} {inscripcion.alumno?.apellido}
+                            {alumno.nombre} {alumno.apellido}
+                            {esAusente && (
+                              <span style={{
+                                fontSize: '0.625rem',
+                                fontWeight: '600',
+                                padding: '0.125rem 0.5rem',
+                                borderRadius: '9999px',
+                                backgroundColor: '#FEE2E2',
+                                color: '#DC2626'
+                              }}>Ausente</span>
+                            )}
+                            {esRecuperacion && (
+                              <span style={{
+                                fontSize: '0.625rem',
+                                fontWeight: '600',
+                                padding: '0.125rem 0.5rem',
+                                borderRadius: '9999px',
+                                backgroundColor: '#FEF3C7',
+                                color: '#D97706'
+                              }}>Recupera</span>
+                            )}
                           </div>
                           {telefono && (
                             <div style={{
@@ -625,7 +655,7 @@ function Administracion() {
                             </a>
                           )}
                           <button
-                            onClick={() => navigate(`/alumnos/${inscripcion.alumno?.id}`)}
+                            onClick={() => navigate(`/alumnos/${alumno.id}`)}
                             style={{
                               padding: '0.375rem 0.75rem',
                               backgroundColor: colors.white,
@@ -651,7 +681,11 @@ function Administracion() {
                     color: colors.gray[600],
                     textAlign: 'center'
                   }}>
-                    Total: {alumnosClase.length} alumno{alumnosClase.length !== 1 ? 's' : ''}
+                    {(() => {
+                      const asistentes = alumnosClase.filter(a => a.tipo !== 'ausente').length;
+                      const total = alumnosClase.length;
+                      return `Asisten: ${asistentes} de ${total} alumno${total !== 1 ? 's' : ''}`;
+                    })()}
                   </div>
                 </div>
               )

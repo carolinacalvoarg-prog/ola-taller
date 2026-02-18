@@ -8,10 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Configuración de la base de datos
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
+// Prioridad: 1) DATABASE_URL (env), 2) PostgresConnection (appsettings), 3) SQLite
+var postgresConnString = builder.Configuration.GetConnectionString("PostgresConnection");
+
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    // Producción: PostgreSQL (Supabase/Render)
-    // Convertir formato postgres:// o postgresql:// a formato Npgsql
+    // Producción: PostgreSQL via variable de entorno
     var connStr = databaseUrl;
     if (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://"))
     {
@@ -22,11 +24,26 @@ if (!string.IsNullOrEmpty(databaseUrl))
 
     builder.Services.AddDbContext<OlaDbContext>(options =>
         options.UseNpgsql(connStr));
-    Console.WriteLine("Using PostgreSQL database");
+    Console.WriteLine("Using PostgreSQL database (DATABASE_URL)");
+}
+else if (!string.IsNullOrEmpty(postgresConnString))
+{
+    // Desarrollo local con PostgreSQL (appsettings.json)
+    var connStr = postgresConnString;
+    if (postgresConnString.StartsWith("postgres://") || postgresConnString.StartsWith("postgresql://"))
+    {
+        var uri = new Uri(postgresConnString);
+        var userInfo = uri.UserInfo.Split(':');
+        connStr = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    }
+
+    builder.Services.AddDbContext<OlaDbContext>(options =>
+        options.UseNpgsql(connStr));
+    Console.WriteLine("Using PostgreSQL database (appsettings)");
 }
 else
 {
-    // Desarrollo: SQLite
+    // Desarrollo: SQLite local
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<OlaDbContext>(options =>
         options.UseSqlite(connectionString));

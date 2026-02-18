@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MessageCircle, Users, X } from 'lucide-react';
 import Card from '../components/Card';
 import Toast from '../components/Toast';
 import { colors } from '../styles/colors';
@@ -7,9 +8,11 @@ import { turnosService, diasSinClaseService, inscripcionesService, alumnosServic
 import { useAuth } from '../context/AuthContext';
 
 const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const diasSemanaLargo = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const nombresMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 function Calendario() {
+  const navigate = useNavigate();
   const { hasRole, user } = useAuth();
   const esAdmin = hasRole(['Admin']);
   const esAlumno = hasRole(['Alumno']);
@@ -20,6 +23,12 @@ function Calendario() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [togglingDay, setTogglingDay] = useState(null);
+
+  // Estado admin modal
+  const [selectedFecha, setSelectedFecha] = useState(null);
+  const [selectedClaseDetalle, setSelectedClaseDetalle] = useState(null);
+  const [alumnosClase, setAlumnosClase] = useState([]);
+  const [loadingAlumnos, setLoadingAlumnos] = useState(false);
 
   // Estado alumno
   const [inscripciones, setInscripciones] = useState([]);
@@ -243,6 +252,35 @@ function Calendario() {
     }
   };
 
+  // Admin modal helpers
+  const formatFechaModal = (fechaStr) => {
+    const d = new Date(fechaStr + 'T00:00:00');
+    return `${diasSemanaLargo[d.getDay()]} ${d.getDate()} de ${nombresMeses[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const closeModal = () => {
+    setSelectedFecha(null);
+    setSelectedClaseDetalle(null);
+    setAlumnosClase([]);
+  };
+
+  const fetchAlumnosClase = async (clase, fecha) => {
+    setSelectedClaseDetalle(clase);
+    setLoadingAlumnos(true);
+    try {
+      const response = await inscripcionesService.getAlumnosPorTurnoYFecha(clase.id, fecha);
+      const alumnos = response.data || [];
+      const orden = { regular: 0, recuperacion: 1, ausente: 2 };
+      alumnos.sort((a, b) => (orden[a.tipo] ?? 99) - (orden[b.tipo] ?? 99));
+      setAlumnosClase(alumnos);
+    } catch (error) {
+      console.error('Error al cargar alumnos:', error);
+      setToastAndClose('Error al cargar los alumnos de la clase', 'error');
+    } finally {
+      setLoadingAlumnos(false);
+    }
+  };
+
   const primerDia = new Date(anio, mes - 1, 1);
   const ultimoDia = new Date(anio, mes, 0);
   const diasEnMes = ultimoDia.getDate();
@@ -300,7 +338,7 @@ function Calendario() {
           color: colors.gray[600],
           marginBottom: '1rem'
         }}>
-          Hacé clic en un día para marcarlo o desmarcarlo como día sin clase (feriado, sábado sin clase, etc.).
+          Hacé clic en un día para ver las clases o marcarlo como día sin clase.
         </p>
       )}
 
@@ -443,7 +481,7 @@ function Calendario() {
             return (
               <div
                 key={celda.key}
-                onClick={() => esAdmin && !isLoading && handleToggleDiaSinClase(fechaStr)}
+                onClick={() => esAdmin && setSelectedFecha(fechaStr)}
                 style={{
                   minHeight: '80px',
                   padding: '0.35rem',
@@ -659,6 +697,325 @@ function Calendario() {
           })}
         </div>
       </Card>
+
+      {/* Modal admin: opciones del día */}
+      {esAdmin && selectedFecha && (
+        <div
+          onClick={closeModal}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: colors.white,
+              borderRadius: '12px',
+              padding: '1.5rem',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem'
+            }}>
+              {selectedClaseDetalle ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => { setSelectedClaseDetalle(null); setAlumnosClase([]); }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: colors.gray[500],
+                      padding: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <h3 style={{ margin: 0, color: colors.gray[900] }}>
+                    Alumnos - {selectedClaseDetalle.horaInicio}
+                  </h3>
+                </div>
+              ) : (
+                <h3 style={{ margin: 0, color: colors.gray[900], fontSize: '1rem' }}>
+                  {formatFechaModal(selectedFecha)}
+                </h3>
+              )}
+              <button
+                onClick={closeModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colors.gray[500],
+                  flexShrink: 0
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {selectedClaseDetalle ? (
+              // Vista detalle alumnos
+              loadingAlumnos ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: colors.gray[500] }}>
+                  Cargando alumnos...
+                </div>
+              ) : alumnosClase.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: colors.gray[500] }}>
+                  <Users size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                  <p>No hay alumnos inscriptos en esta clase</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {alumnosClase.map((alumno) => {
+                    const telefono = alumno.telefono;
+                    const telefonoLimpio = telefono ? telefono.replace(/\D/g, '') : '';
+                    const esAusente = alumno.tipo === 'ausente';
+                    const esRecuperacion = alumno.tipo === 'recuperacion';
+
+                    return (
+                      <div
+                        key={`${alumno.tipo}-${alumno.id}`}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          backgroundColor: colors.gray[50],
+                          borderRadius: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          opacity: esAusente ? 0.5 : 1
+                        }}
+                      >
+                        <div>
+                          <div style={{
+                            fontWeight: '500',
+                            color: colors.gray[900],
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}>
+                            {alumno.nombre} {alumno.apellido}
+                            {esAusente && (
+                              <span style={{
+                                fontSize: '0.625rem',
+                                fontWeight: '600',
+                                padding: '0.125rem 0.5rem',
+                                borderRadius: '9999px',
+                                backgroundColor: '#FEE2E2',
+                                color: '#DC2626'
+                              }}>Ausente</span>
+                            )}
+                            {esRecuperacion && (
+                              <span style={{
+                                fontSize: '0.625rem',
+                                fontWeight: '600',
+                                padding: '0.125rem 0.5rem',
+                                borderRadius: '9999px',
+                                backgroundColor: '#FEF3C7',
+                                color: '#D97706'
+                              }}>Recupera</span>
+                            )}
+                          </div>
+                          {telefono && (
+                            <div style={{ fontSize: '0.75rem', color: colors.gray[500] }}>
+                              {telefono}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          {telefonoLimpio && (
+                            <a
+                              href={`https://wa.me/${telefonoLimpio}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#25D366',
+                                borderRadius: '6px',
+                                color: 'white',
+                                textDecoration: 'none'
+                              }}
+                              title="Enviar WhatsApp"
+                            >
+                              <MessageCircle size={18} />
+                            </a>
+                          )}
+                          <button
+                            onClick={() => navigate(`/alumnos/${alumno.id}`)}
+                            style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: colors.white,
+                              color: colors.primary,
+                              border: `1px solid ${colors.primary}`,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Ver Ficha
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{
+                    marginTop: '0.5rem',
+                    paddingTop: '0.75rem',
+                    borderTop: `1px solid ${colors.gray[200]}`,
+                    fontSize: '0.875rem',
+                    color: colors.gray[600],
+                    textAlign: 'center'
+                  }}>
+                    {(() => {
+                      const asistentes = alumnosClase.filter(a => a.tipo !== 'ausente').length;
+                      const total = alumnosClase.length;
+                      return `Asisten: ${asistentes} de ${total} alumno${total !== 1 ? 's' : ''}`;
+                    })()}
+                  </div>
+                </div>
+              )
+            ) : (
+              // Vista principal: opciones del día
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Botón marcar/desmarcar día sin clase */}
+                <button
+                  onClick={() => {
+                    handleToggleDiaSinClase(selectedFecha);
+                    closeModal();
+                  }}
+                  disabled={togglingDay === selectedFecha}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: diasSinClaseSet.has(selectedFecha) ? colors.success : colors.error + '15',
+                    color: diasSinClaseSet.has(selectedFecha) ? colors.white : colors.error,
+                    border: diasSinClaseSet.has(selectedFecha) ? 'none' : `1px solid ${colors.error}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    opacity: togglingDay === selectedFecha ? 0.7 : 1
+                  }}
+                >
+                  {diasSinClaseSet.has(selectedFecha)
+                    ? 'Desmarcar día sin clase'
+                    : 'Marcar como día sin clase'}
+                </button>
+
+                {/* Lista de clases del día */}
+                {(() => {
+                  const clasesDelDia = getClasesDelDia(selectedFecha);
+                  if (clasesDelDia.length === 0) {
+                    return (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '1.5rem',
+                        color: colors.gray[500],
+                        fontSize: '0.875rem'
+                      }}>
+                        No hay clases este día
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        color: colors.gray[700],
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Clases del día
+                      </div>
+                      {clasesDelDia
+                        .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))
+                        .map((clase) => (
+                        <div
+                          key={clase.id}
+                          style={{
+                            padding: '1rem',
+                            backgroundColor: colors.gray[50],
+                            borderRadius: '8px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div>
+                            <div style={{
+                              fontWeight: '600',
+                              color: colors.gray[900],
+                              fontSize: '1rem'
+                            }}>
+                              {clase.horaInicio} - {clase.horaFin}
+                            </div>
+                            {clase.profesor && (
+                              <div style={{
+                                fontSize: '0.875rem',
+                                color: colors.gray[600],
+                                marginTop: '0.25rem'
+                              }}>
+                                Prof. {clase.profesor.nombre} {clase.profesor.apellido}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              color: colors.gray[600]
+                            }}>
+                              {clase.cuposOcupados || 0}/{clase.cuposMaximos}
+                            </div>
+                            <button
+                              onClick={() => fetchAlumnosClase(clase, selectedFecha)}
+                              style={{
+                                padding: '0.375rem 0.75rem',
+                                backgroundColor: colors.primary,
+                                color: colors.white,
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              Ver Detalle
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {toast.show && (
         <Toast

@@ -562,6 +562,19 @@ public class InscripcionesController : ControllerBase
             })
             .ToList();
 
+        var alumnosAusentes = inscripcionesActivas
+            .Where(i => ausenciasSet.Contains(i.Id))
+            .Select(i => new
+            {
+                i.Alumno!.Id,
+                i.Alumno.Nombre,
+                i.Alumno.Apellido,
+                i.Alumno.Email,
+                i.Alumno.Telefono,
+                Tipo = "ausente"
+            })
+            .ToList();
+
         // Alumnos de recuperación para esa fecha y turno
         var alumnosRecuperacion = await _context.RecuperacionesProgramadas
             .Include(r => r.Alumno)
@@ -577,7 +590,7 @@ public class InscripcionesController : ControllerBase
             })
             .ToListAsync();
 
-        var resultado = alumnosRegulares.Cast<object>().Concat(alumnosRecuperacion).ToList();
+        var resultado = alumnosRegulares.Cast<object>().Concat(alumnosRecuperacion).Concat(alumnosAusentes).ToList();
         return Ok(resultado);
     }
 

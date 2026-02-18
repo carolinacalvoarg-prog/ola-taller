@@ -5,7 +5,10 @@
       "Bash(npm run build:*)",
       "Bash(dotnet build:*)",
       "Bash(sqlite3:*)",
-      "Bash(npx vite build:*)"
+      "Bash(npx vite build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)"
     ]
   }
 }
