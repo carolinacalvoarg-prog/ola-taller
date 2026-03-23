@@ -167,6 +167,11 @@ function PortalAlumno() {
   // Set de turnoIds en los que el alumno tiene inscripción fija
   const turnosFijos = new Set(inscripciones.map(i => i.turnoId));
 
+  // Set de tallerIds de los turnos del alumno (para filtrar recuperaciones)
+  const alumnoTallerIds = new Set(
+    inscripciones.map(i => i.turno?.tallerId).filter(id => id != null)
+  );
+
   // Set de "turnoId-fecha" donde el alumno ya está inscripto
   const inscriptoPorTurnoYFecha = new Set();
   inscripciones.forEach(insc => {
@@ -472,6 +477,8 @@ function PortalAlumno() {
         {(() => {
           const items = turnos.flatMap((turno) => {
             if (!turno.proximasFechas) return [];
+            // Filtrar por taller: si el turno tiene taller, debe coincidir con el del alumno
+            if (turno.tallerId != null && alumnoTallerIds.size > 0 && !alumnoTallerIds.has(turno.tallerId)) return [];
             return turno.proximasFechas
               .filter(pf => !inscriptoPorTurnoYFecha.has(`${turno.id}-${pf.fecha.slice(0, 10)}`))
               .filter(pf => !recuperacionesPorTurnoFecha.has(`${turno.id}-${pf.fecha.slice(0, 10)}`))
@@ -499,9 +506,14 @@ function PortalAlumno() {
                     <div style={{ fontWeight: '600', color: disponible ? colors.gray[900] : colors.gray[500], marginBottom: '0.25rem' }}>
                       {formatearFechaCorta(fecha)}
                     </div>
-                    <div style={{ color: disponible ? colors.gray[600] : colors.gray[400], fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    <div style={{ color: disponible ? colors.gray[600] : colors.gray[400], fontSize: '0.875rem', marginBottom: '0.25rem' }}>
                       {turno.horaInicio} - {turno.horaFin}
                     </div>
+                    {turno.tallerNombre && (
+                      <div style={{ fontSize: '0.7rem', color: colors.primary, fontWeight: '500', marginBottom: '0.5rem' }}>
+                        {turno.tallerNombre}
+                      </div>
+                    )}
                     {disponible ? (
                       <>
                         <div style={{

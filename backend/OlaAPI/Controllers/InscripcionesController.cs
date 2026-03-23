@@ -220,6 +220,39 @@ public class InscripcionesController : ControllerBase
         if (turno == null || !turno.Activo)
             return BadRequest("El turno no existe o no está activo.");
 
+        // Validación por taller: si el turno pertenece a un taller, el alumno debe
+        // tener clases pendientes en ese taller o en alguno con permiso de recuperar aquí
+        if (turno.TallerId.HasValue)
+        {
+            // Obtener los talleres fuente que tienen permiso de recuperar en este taller
+            var talleresPermitidosFuente = await _context.TalleresRecuperacionPermitida
+                .Where(p => p.TallerPermitidoId == turno.TallerId.Value)
+                .Select(p => p.TallerId)
+                .ToListAsync();
+
+            // El grupo incluye el propio taller + todos los que tienen permiso de recuperar aquí
+            var grupoTallerIds = talleresPermitidosFuente
+                .Append(turno.TallerId.Value)
+                .ToList();
+
+            var ausenciasEnGrupo = await _context.AusenciasProgramadas
+                .Include(a => a.Inscripcion)
+                    .ThenInclude(i => i!.Turno)
+                .CountAsync(a => a.Inscripcion!.AlumnoId == dto.AlumnoId
+                               && a.Inscripcion.Activa
+                               && a.Inscripcion.Turno!.TallerId.HasValue
+                               && grupoTallerIds.Contains(a.Inscripcion.Turno.TallerId!.Value));
+
+            var recuperacionesEnGrupo = await _context.RecuperacionesProgramadas
+                .Include(r => r.Turno)
+                .CountAsync(r => r.AlumnoId == dto.AlumnoId
+                               && r.Turno!.TallerId.HasValue
+                               && grupoTallerIds.Contains(r.Turno.TallerId!.Value));
+
+            if (ausenciasEnGrupo - recuperacionesEnGrupo <= 0)
+                return BadRequest("No tenés clases pendientes de recuperar en este taller.");
+        }
+
         var fechaRecuperacion = DateTime.SpecifyKind(dto.Fecha.Date, DateTimeKind.Utc);
         var fechaSiguiente = fechaRecuperacion.AddDays(1);
 
@@ -322,6 +355,7 @@ public class InscripcionesController : ControllerBase
     {
         var inscripciones = await _context.Inscripciones
             .Include(i => i.Turno)
+                .ThenInclude(t => t!.Taller)
             .Where(i => i.AlumnoId == alumnoId && i.Activa)
             .ToListAsync();
 
@@ -360,7 +394,9 @@ public class InscripcionesController : ControllerBase
                     turno.DiaSemana,
                     turno.HoraInicio,
                     turno.HoraFin,
-                    turno.CuposMaximos
+                    turno.CuposMaximos,
+                    turno.TallerId,
+                    TallerNombre = turno.Taller != null ? turno.Taller.Nombre : null
                 } : null
             });
         }
@@ -375,6 +411,7 @@ public class InscripcionesController : ControllerBase
         var hoy = TimeHelper.HoyArgentina();
         var recuperaciones = await _context.RecuperacionesProgramadas
             .Include(r => r.Turno)
+                .ThenInclude(t => t!.Taller)
             .Where(r => r.AlumnoId == alumnoId && r.Fecha >= hoy)
             .OrderBy(r => r.Fecha)
             .Select(r => new
@@ -388,7 +425,9 @@ public class InscripcionesController : ControllerBase
                     r.Turno.Id,
                     r.Turno.DiaSemana,
                     r.Turno.HoraInicio,
-                    r.Turno.HoraFin
+                    r.Turno.HoraFin,
+                    r.Turno.TallerId,
+                    TallerNombre = r.Turno.Taller != null ? r.Turno.Taller.Nombre : null
                 } : null
             })
             .ToListAsync();

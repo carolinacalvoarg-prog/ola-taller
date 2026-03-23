@@ -21,6 +21,9 @@ public class OlaDbContext : DbContext
     public DbSet<DiaSinClase> DiasSinClase { get; set; }
     public DbSet<AusenciaProgramada> AusenciasProgramadas { get; set; }
     public DbSet<RecuperacionProgramada> RecuperacionesProgramadas { get; set; }
+    public DbSet<Taller> Talleres { get; set; }
+    public DbSet<TurnoFecha> TurnoFechas { get; set; }
+    public DbSet<TallerRecuperacionPermitida> TalleresRecuperacionPermitida { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +49,28 @@ public class OlaDbContext : DbContext
             entity.HasIndex(e => e.Email).IsUnique();
         });
 
+        // Configuración de Taller
+        modelBuilder.Entity<Taller>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Nombre).IsRequired().HasMaxLength(150);
+        });
+
+        // Configuración de TallerRecuperacionPermitida
+        modelBuilder.Entity<TallerRecuperacionPermitida>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Taller)
+                  .WithMany(t => t.RecuperacionesPermitidas)
+                  .HasForeignKey(e => e.TallerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.TallerPermitido)
+                  .WithMany()
+                  .HasForeignKey(e => e.TallerPermitidoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TallerId, e.TallerPermitidoId }).IsUnique();
+        });
+
         // Configuración de Turno
         modelBuilder.Entity<Turno>(entity =>
         {
@@ -54,6 +79,21 @@ public class OlaDbContext : DbContext
                   .WithMany(p => p.Turnos)
                   .HasForeignKey(e => e.ProfesorId)
                   .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Taller)
+                  .WithMany(t => t.Turnos)
+                  .HasForeignKey(e => e.TallerId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configuración de TurnoFecha
+        modelBuilder.Entity<TurnoFecha>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Turno)
+                  .WithMany(t => t.FechasManuales)
+                  .HasForeignKey(e => e.TurnoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TurnoId, e.Fecha }).IsUnique();
         });
 
         // Configuración de Inscripcion

@@ -28,6 +28,21 @@ export const turnosService = {
   create: (turno) => api.post('/turnos', turno),
   update: (id, turno) => api.put(`/turnos/${id}`, turno),
   delete: (id) => api.delete(`/turnos/${id}`),
+  getFechasManuales: (turnoId) => api.get(`/turnos/${turnoId}/fechas`),
+  addFechaManual: (turnoId, fecha) => api.post(`/turnos/${turnoId}/fechas`, { fecha }),
+  deleteFechaManual: (turnoId, fechaId) => api.delete(`/turnos/${turnoId}/fechas/${fechaId}`),
+};
+
+// Servicios de Talleres
+export const talleresService = {
+  getAll: () => api.get('/talleres'),
+  create: (taller) => api.post('/talleres', taller),
+  update: (id, taller) => api.put(`/talleres/${id}`, taller),
+  delete: (id) => api.delete(`/talleres/${id}`),
+  addRecuperacionPermitida: (tallerId, tallerPermitidoId) =>
+    api.post(`/talleres/${tallerId}/recuperaciones`, { tallerPermitidoId }),
+  deleteRecuperacionPermitida: (tallerId, tallerPermitidoId) =>
+    api.delete(`/talleres/${tallerId}/recuperaciones/${tallerPermitidoId}`),
 };
 
 // Servicios de Inscripciones

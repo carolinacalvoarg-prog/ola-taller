@@ -225,7 +225,15 @@ function Calendario() {
   const getClasesDelDia = (fecha) => {
     const d = new Date(fecha + 'T00:00:00');
     const dayOfWeek = d.getDay();
-    return turnos.filter(t => t.diaSemana === dayOfWeek && t.activo);
+    return turnos.filter(t => {
+      if (!t.activo) return false;
+      if (t.usarFechasManuales && (t.fechasManuales || []).length > 0) {
+        // Solo aparece si la fecha está en su lista de fechas manuales
+        return t.fechasManuales.some(f => f.fecha.slice(0, 10) === fecha);
+      }
+      // Sin fechas manuales cargadas (o modo automático): usar día de semana
+      return t.diaSemana === dayOfWeek;
+    });
   };
 
   const handleToggleDiaSinClase = async (fechaStr) => {
@@ -957,55 +965,64 @@ function Calendario() {
                         <div
                           key={clase.id}
                           style={{
-                            padding: '1rem',
+                            padding: '0.75rem 1rem',
                             backgroundColor: colors.gray[50],
                             borderRadius: '8px',
                             display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '0.75rem'
                           }}
                         >
-                          <div>
-                            <div style={{
-                              fontWeight: '600',
-                              color: colors.gray[900],
-                              fontSize: '1rem'
-                            }}>
+                          {/* Taller */}
+                          <div style={{ minWidth: '120px' }}>
+                            {clase.tallerNombre ? (
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: colors.primary,
+                                backgroundColor: colors.primary + '18',
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '999px',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {clase.tallerNombre}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: colors.gray[400] }}>—</span>
+                            )}
+                          </div>
+                          {/* Horario */}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: '600', color: colors.gray[900], fontSize: '0.9rem' }}>
                               {clase.horaInicio} - {clase.horaFin}
                             </div>
                             {clase.profesor && (
-                              <div style={{
-                                fontSize: '0.875rem',
-                                color: colors.gray[600],
-                                marginTop: '0.25rem'
-                              }}>
+                              <div style={{ fontSize: '0.8rem', color: colors.gray[600], marginTop: '0.125rem' }}>
                                 Prof. {clase.profesor.nombre} {clase.profesor.apellido}
                               </div>
                             )}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{
-                              fontSize: '0.875rem',
-                              color: colors.gray[600]
-                            }}>
-                              {clase.cuposOcupados || 0}/{clase.cuposMaximos}
-                            </div>
-                            <button
-                              onClick={() => fetchAlumnosClase(clase, selectedFecha)}
-                              style={{
-                                padding: '0.375rem 0.75rem',
-                                backgroundColor: colors.primary,
-                                color: colors.white,
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              Ver Detalle
-                            </button>
+                          {/* Cupos */}
+                          <div style={{ fontSize: '0.875rem', color: colors.gray[600], whiteSpace: 'nowrap' }}>
+                            {clase.cuposOcupados || 0}/{clase.cuposMaximos}
                           </div>
+                          {/* Ver detalle */}
+                          <button
+                            onClick={() => fetchAlumnosClase(clase, selectedFecha)}
+                            style={{
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: colors.primary,
+                              color: colors.white,
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            Ver Detalle
+                          </button>
                         </div>
                       ))}
                     </div>

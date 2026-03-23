@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OlaInfrastructure.Data;
 
@@ -10,9 +11,11 @@ using OlaInfrastructure.Data;
 namespace OlaInfrastructure.Migrations
 {
     [DbContext(typeof(OlaDbContext))]
-    partial class OlaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260323164007_AddTallerYFechasManuales")]
+    partial class AddTallerYFechasManuales
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -357,28 +360,6 @@ namespace OlaInfrastructure.Migrations
                     b.ToTable("Talleres");
                 });
 
-            modelBuilder.Entity("OlaCore.Models.TallerRecuperacionPermitida", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TallerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TallerPermitidoId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TallerPermitidoId");
-
-                    b.HasIndex("TallerId", "TallerPermitidoId")
-                        .IsUnique();
-
-                    b.ToTable("TalleresRecuperacionPermitida");
-                });
-
             modelBuilder.Entity("OlaCore.Models.Turno", b =>
                 {
                     b.Property<int>("Id")
@@ -576,25 +557,6 @@ namespace OlaInfrastructure.Migrations
                     b.Navigation("Turno");
                 });
 
-            modelBuilder.Entity("OlaCore.Models.TallerRecuperacionPermitida", b =>
-                {
-                    b.HasOne("OlaCore.Models.Taller", "Taller")
-                        .WithMany("RecuperacionesPermitidas")
-                        .HasForeignKey("TallerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OlaCore.Models.Taller", "TallerPermitido")
-                        .WithMany()
-                        .HasForeignKey("TallerPermitidoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Taller");
-
-                    b.Navigation("TallerPermitido");
-                });
-
             modelBuilder.Entity("OlaCore.Models.Turno", b =>
                 {
                     b.HasOne("OlaCore.Models.Profesor", "Profesor")
@@ -661,8 +623,6 @@ namespace OlaInfrastructure.Migrations
 
             modelBuilder.Entity("OlaCore.Models.Taller", b =>
                 {
-                    b.Navigation("RecuperacionesPermitidas");
-
                     b.Navigation("Turnos");
                 });
 
