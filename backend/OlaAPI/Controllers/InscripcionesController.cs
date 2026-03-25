@@ -365,6 +365,112 @@ public class InscripcionesController : ControllerBase
         });
     }
 
+    // POST: api/Inscripciones/recuperacion/admin  (sin validación de taller)
+    [HttpPost("recuperacion/admin")]
+    public async Task<ActionResult<object>> InscribirRecuperacionAdmin(CreateRecuperacionDto dto)
+    {
+        var alumno = await _context.Alumnos.FindAsync(dto.AlumnoId);
+        if (alumno == null)
+            return NotFound("Alumno no encontrado.");
+
+        if (alumno.ClasesPendientesRecuperar <= 0)
+            return BadRequest("El alumno no tiene clases pendientes de recuperar.");
+
+        var turno = await _context.Turnos
+            .Include(t => t.Inscripciones.Where(i => i.Activa))
+            .FirstOrDefaultAsync(t => t.Id == dto.TurnoId);
+
+        if (turno == null || !turno.Activo)
+            return BadRequest("El turno no existe o no está activo.");
+
+        var fechaRecuperacion = DateTime.SpecifyKind(dto.Fecha.Date, DateTimeKind.Utc);
+        var fechaSiguiente = fechaRecuperacion.AddDays(1);
+
+        // Si el alumno tiene inscripción activa en este turno y una ausencia para esta fecha → des-cancelar
+        var inscripcionPropia = await _context.Inscripciones
+            .FirstOrDefaultAsync(i => i.AlumnoId == dto.AlumnoId && i.TurnoId == dto.TurnoId && i.Activa);
+
+        if (inscripcionPropia != null)
+        {
+            var ausencia = await _context.AusenciasProgramadas
+                .FirstOrDefaultAsync(a => a.InscripcionId == inscripcionPropia.Id
+                    && a.Fecha >= fechaRecuperacion && a.Fecha < fechaSiguiente);
+
+            if (ausencia != null)
+            {
+                _context.AusenciasProgramadas.Remove(ausencia);
+                alumno.ClasesPendientesRecuperar--;
+                _context.Actividades.Add(new Actividad
+                {
+                    Tipo = "recuperacion",
+                    AlumnoId = dto.AlumnoId,
+                    TurnoId = dto.TurnoId,
+                    Fecha = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+                return Ok(new
+                {
+                    Id = 0,
+                    dto.AlumnoId,
+                    dto.TurnoId,
+                    Fecha = fechaRecuperacion,
+                    FechaRegistro = DateTime.UtcNow,
+                    ClasesPendientesRecuperar = alumno.ClasesPendientesRecuperar
+                });
+            }
+
+            return BadRequest("El alumno ya está inscripto en este turno para esa fecha.");
+        }
+
+        var yaExiste = await _context.RecuperacionesProgramadas
+            .AnyAsync(r => r.AlumnoId == dto.AlumnoId && r.TurnoId == dto.TurnoId && r.Fecha == fechaRecuperacion);
+        if (yaExiste)
+            return BadRequest("El alumno ya tiene una recuperación programada para ese turno y fecha.");
+
+        var inscripcionesActivas = turno.Inscripciones.Count;
+        var ausenciasEnFecha = await _context.AusenciasProgramadas
+            .Include(a => a.Inscripcion)
+            .CountAsync(a => a.Inscripcion!.TurnoId == dto.TurnoId
+                          && a.Inscripcion.Activa
+                          && a.Fecha >= fechaRecuperacion && a.Fecha < fechaSiguiente);
+        var recuperacionesEnFecha = await _context.RecuperacionesProgramadas
+            .CountAsync(r => r.TurnoId == dto.TurnoId && r.Fecha >= fechaRecuperacion && r.Fecha < fechaSiguiente);
+
+        var cuposDisponibles = turno.CuposMaximos - inscripcionesActivas + ausenciasEnFecha - recuperacionesEnFecha;
+        if (cuposDisponibles <= 0)
+            return BadRequest("No hay cupos disponibles para esa fecha.");
+
+        var recuperacion = new RecuperacionProgramada
+        {
+            AlumnoId = dto.AlumnoId,
+            TurnoId = dto.TurnoId,
+            Fecha = fechaRecuperacion,
+            FechaRegistro = DateTime.UtcNow
+        };
+
+        _context.RecuperacionesProgramadas.Add(recuperacion);
+        alumno.ClasesPendientesRecuperar--;
+        _context.Actividades.Add(new Actividad
+        {
+            Tipo = "recuperacion",
+            AlumnoId = dto.AlumnoId,
+            TurnoId = dto.TurnoId,
+            Fecha = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            recuperacion.Id,
+            recuperacion.AlumnoId,
+            recuperacion.TurnoId,
+            recuperacion.Fecha,
+            recuperacion.FechaRegistro,
+            ClasesPendientesRecuperar = alumno.ClasesPendientesRecuperar
+        });
+    }
+
     // GET: api/Inscripciones/alumno/5
     [HttpGet("alumno/{alumnoId}")]
     public async Task<ActionResult<IEnumerable<object>>> GetInscripcionesByAlumno(int alumnoId)

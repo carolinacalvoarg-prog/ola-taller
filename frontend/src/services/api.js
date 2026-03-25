@@ -54,6 +54,7 @@ export const inscripcionesService = {
   cancelar: (id) => api.delete(`/inscripciones/${id}`),
   cancelarProximas: (inscripcionId, cantidad, fecha) => api.post('/inscripciones/cancelar-proximas', { inscripcionId, cantidad, ...(fecha && { fecha }) }),
   inscribirRecuperacion: (inscripcion) => api.post('/inscripciones/recuperacion', inscripcion),
+  inscribirRecuperacionAdmin: (inscripcion) => api.post('/inscripciones/recuperacion/admin', inscripcion),
   getRecuperacionesByAlumno: (alumnoId) => api.get(`/inscripciones/alumno/${alumnoId}/recuperaciones`),
   cancelarRecuperacion: (id) => api.delete(`/inscripciones/recuperacion/${id}`),
   getActividades: (limit = 10) => api.get(`/inscripciones/actividades?limit=${limit}`),

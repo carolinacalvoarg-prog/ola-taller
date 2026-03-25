@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MessageCircle, Users, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MessageCircle, Users, X, UserPlus } from 'lucide-react';
 import Card from '../components/Card';
 import Toast from '../components/Toast';
 import { colors } from '../styles/colors';
@@ -29,6 +29,12 @@ function Calendario() {
   const [selectedClaseDetalle, setSelectedClaseDetalle] = useState(null);
   const [alumnosClase, setAlumnosClase] = useState([]);
   const [loadingAlumnos, setLoadingAlumnos] = useState(false);
+
+  // Estado form recuperación manual admin
+  const [mostrarFormRecup, setMostrarFormRecup] = useState(false);
+  const [alumnosLista, setAlumnosLista] = useState([]);
+  const [alumnoRecupId, setAlumnoRecupId] = useState('');
+  const [asignandoRecup, setAsignandoRecup] = useState(false);
 
   // Estado alumno
   const [inscripciones, setInscripciones] = useState([]);
@@ -270,6 +276,43 @@ function Calendario() {
     setSelectedFecha(null);
     setSelectedClaseDetalle(null);
     setAlumnosClase([]);
+    setMostrarFormRecup(false);
+    setAlumnoRecupId('');
+    setAlumnosLista([]);
+  };
+
+  const handleAbrirFormRecup = async () => {
+    setMostrarFormRecup(true);
+    if (alumnosLista.length === 0) {
+      try {
+        const res = await alumnosService.getAll();
+        const lista = (res.data || []).sort((a, b) => a.apellido.localeCompare(b.apellido));
+        setAlumnosLista(lista);
+      } catch {
+        setToastAndClose('Error al cargar la lista de alumnos', 'error');
+      }
+    }
+  };
+
+  const handleAsignarRecuperacionAdmin = async () => {
+    if (!alumnoRecupId || !selectedClaseDetalle || !selectedFecha) return;
+    try {
+      setAsignandoRecup(true);
+      await inscripcionesService.inscribirRecuperacionAdmin({
+        alumnoId: parseInt(alumnoRecupId),
+        turnoId: selectedClaseDetalle.id,
+        fecha: selectedFecha
+      });
+      setToastAndClose('Recuperación asignada correctamente');
+      setMostrarFormRecup(false);
+      setAlumnoRecupId('');
+      // Recargar lista de alumnos de la clase
+      fetchAlumnosClase(selectedClaseDetalle, selectedFecha);
+    } catch (error) {
+      setToastAndClose(error.response?.data || 'Error al asignar la recuperación', 'error');
+    } finally {
+      setAsignandoRecup(false);
+    }
   };
 
   const fetchAlumnosClase = async (clase, fecha) => {
@@ -904,6 +947,98 @@ function Calendario() {
                       return `Asisten: ${asistentes} de ${total} alumno${total !== 1 ? 's' : ''}`;
                     })()}
                   </div>
+
+                  {/* Recuperación manual admin */}
+                  {!mostrarFormRecup ? (
+                    <button
+                      onClick={handleAbrirFormRecup}
+                      style={{
+                        marginTop: '0.75rem',
+                        width: '100%',
+                        padding: '0.5rem',
+                        backgroundColor: colors.primary + '15',
+                        color: colors.primary,
+                        border: `1px solid ${colors.primary}`,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      <UserPlus size={14} />
+                      Asignar recuperación manual
+                    </button>
+                  ) : (
+                    <div style={{
+                      marginTop: '0.75rem',
+                      padding: '0.75rem',
+                      backgroundColor: colors.gray[50],
+                      borderRadius: '8px',
+                      border: `1px solid ${colors.gray[200]}`
+                    }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: '600', color: colors.gray[700], marginBottom: '0.5rem' }}>
+                        Asignar recuperación manual
+                      </div>
+                      <select
+                        value={alumnoRecupId}
+                        onChange={(e) => setAlumnoRecupId(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          borderRadius: '6px',
+                          border: `1px solid ${colors.gray[300]}`,
+                          fontSize: '0.875rem',
+                          marginBottom: '0.5rem',
+                          backgroundColor: colors.white
+                        }}
+                      >
+                        <option value="">— Seleccionar alumno —</option>
+                        {alumnosLista.map(a => (
+                          <option key={a.id} value={a.id}>
+                            {a.apellido}, {a.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={handleAsignarRecuperacionAdmin}
+                          disabled={!alumnoRecupId || asignandoRecup}
+                          style={{
+                            flex: 1,
+                            padding: '0.5rem',
+                            backgroundColor: alumnoRecupId ? colors.primary : colors.gray[300],
+                            color: colors.white,
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: alumnoRecupId ? 'pointer' : 'not-allowed',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            opacity: asignandoRecup ? 0.7 : 1
+                          }}
+                        >
+                          {asignandoRecup ? 'Asignando...' : 'Confirmar'}
+                        </button>
+                        <button
+                          onClick={() => { setMostrarFormRecup(false); setAlumnoRecupId(''); }}
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            backgroundColor: colors.gray[100],
+                            color: colors.gray[700],
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             ) : (
