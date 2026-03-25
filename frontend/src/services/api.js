@@ -28,6 +28,21 @@ export const turnosService = {
   create: (turno) => api.post('/turnos', turno),
   update: (id, turno) => api.put(`/turnos/${id}`, turno),
   delete: (id) => api.delete(`/turnos/${id}`),
+  getFechasManuales: (turnoId) => api.get(`/turnos/${turnoId}/fechas`),
+  addFechaManual: (turnoId, fecha) => api.post(`/turnos/${turnoId}/fechas`, { fecha }),
+  deleteFechaManual: (turnoId, fechaId) => api.delete(`/turnos/${turnoId}/fechas/${fechaId}`),
+};
+
+// Servicios de Talleres
+export const talleresService = {
+  getAll: () => api.get('/talleres'),
+  create: (taller) => api.post('/talleres', taller),
+  update: (id, taller) => api.put(`/talleres/${id}`, taller),
+  delete: (id) => api.delete(`/talleres/${id}`),
+  addRecuperacionPermitida: (tallerId, tallerPermitidoId) =>
+    api.post(`/talleres/${tallerId}/recuperaciones`, { tallerPermitidoId }),
+  deleteRecuperacionPermitida: (tallerId, tallerPermitidoId) =>
+    api.delete(`/talleres/${tallerId}/recuperaciones/${tallerPermitidoId}`),
 };
 
 // Servicios de Inscripciones
@@ -39,6 +54,7 @@ export const inscripcionesService = {
   cancelar: (id) => api.delete(`/inscripciones/${id}`),
   cancelarProximas: (inscripcionId, cantidad, fecha) => api.post('/inscripciones/cancelar-proximas', { inscripcionId, cantidad, ...(fecha && { fecha }) }),
   inscribirRecuperacion: (inscripcion) => api.post('/inscripciones/recuperacion', inscripcion),
+  inscribirRecuperacionAdmin: (inscripcion) => api.post('/inscripciones/recuperacion/admin', inscripcion),
   getRecuperacionesByAlumno: (alumnoId) => api.get(`/inscripciones/alumno/${alumnoId}/recuperaciones`),
   cancelarRecuperacion: (id) => api.delete(`/inscripciones/recuperacion/${id}`),
   getActividades: (limit = 10) => api.get(`/inscripciones/actividades?limit=${limit}`),
