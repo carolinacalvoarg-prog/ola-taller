@@ -43,7 +43,6 @@ public class InscripcionesController : ControllerBase
         var turno = await _context.Turnos.FindAsync(turnoId);
         if (turno == null) return new List<DateTime>();
 
-        var diaSemana = (int)turno.DiaSemana; // 0=Dom, 1=Lun, ...
         // Limitar a mes actual + siguiente
         var hasta = new DateTime(desde.Year, desde.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
         var diasSinClase = await _context.DiasSinClase
@@ -62,6 +61,23 @@ public class InscripcionesController : ControllerBase
             ausenciasSet = new HashSet<DateTime>(ausencias);
         }
 
+        // Si el turno usa fechas manuales, devolver solo esas fechas
+        if (turno.UsarFechasManuales)
+        {
+            var fechasManuales = await _context.TurnoFechas
+                .Where(f => f.TurnoId == turnoId && f.Fecha >= desde && f.Fecha < hasta)
+                .OrderBy(f => f.Fecha)
+                .Select(f => f.Fecha.Date)
+                .ToListAsync();
+
+            return fechasManuales
+                .Where(f => !diasSinClaseSet.Contains(f) && !ausenciasSet.Contains(f))
+                .Take(cantidad)
+                .ToList();
+        }
+
+        // Calcular fechas por día de semana recurrente
+        var diaSemana = (int)turno.DiaSemana;
         var resultados = new List<DateTime>();
         var actual = desde.Date;
         // Primer día de la semana que coincide con el turno (hoy o después)
