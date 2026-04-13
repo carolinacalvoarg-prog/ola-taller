@@ -266,7 +266,19 @@ public class InscripcionesController : ControllerBase
                                && grupoTallerIds.Contains(r.Turno.TallerId!.Value));
 
             if (ausenciasEnGrupo - recuperacionesEnGrupo <= 0)
-                return BadRequest("No tenés clases pendientes de recuperar en este taller.");
+            {
+                // El crédito puede venir de una baja de inscripción (no crea AusenciaProgramada).
+                // Si el alumno tiene inscripción activa en el grupo, el contador global ya validó que hay créditos.
+                var tieneInscripcionActivaEnGrupo = await _context.Inscripciones
+                    .Include(i => i.Turno)
+                    .AnyAsync(i => i.AlumnoId == dto.AlumnoId
+                                && i.Activa
+                                && i.Turno!.TallerId.HasValue
+                                && grupoTallerIds.Contains(i.Turno.TallerId!.Value));
+
+                if (!tieneInscripcionActivaEnGrupo)
+                    return BadRequest("No tenés clases pendientes de recuperar en este taller.");
+            }
         }
 
         var fechaRecuperacion = DateTime.SpecifyKind(dto.Fecha.Date, DateTimeKind.Utc);
@@ -293,7 +305,8 @@ public class InscripcionesController : ControllerBase
                     Tipo = "recuperacion",
                     AlumnoId = dto.AlumnoId,
                     TurnoId = dto.TurnoId,
-                    Fecha = DateTime.UtcNow
+                    Fecha = DateTime.UtcNow,
+                    FechaClase = fechaRecuperacion
                 });
 
                 await _context.SaveChangesAsync();
@@ -349,7 +362,8 @@ public class InscripcionesController : ControllerBase
             Tipo = "recuperacion",
             AlumnoId = dto.AlumnoId,
             TurnoId = dto.TurnoId,
-            Fecha = DateTime.UtcNow
+            Fecha = DateTime.UtcNow,
+            FechaClase = fechaRecuperacion
         });
 
         await _context.SaveChangesAsync();
@@ -405,7 +419,8 @@ public class InscripcionesController : ControllerBase
                     Tipo = "recuperacion",
                     AlumnoId = dto.AlumnoId,
                     TurnoId = dto.TurnoId,
-                    Fecha = DateTime.UtcNow
+                    Fecha = DateTime.UtcNow,
+                    FechaClase = fechaRecuperacion
                 });
                 await _context.SaveChangesAsync();
                 return Ok(new
@@ -455,7 +470,8 @@ public class InscripcionesController : ControllerBase
             Tipo = "recuperacion",
             AlumnoId = dto.AlumnoId,
             TurnoId = dto.TurnoId,
-            Fecha = DateTime.UtcNow
+            Fecha = DateTime.UtcNow,
+            FechaClase = fechaRecuperacion
         });
 
         await _context.SaveChangesAsync();
@@ -579,7 +595,8 @@ public class InscripcionesController : ControllerBase
             Tipo = "cancelacion_recuperacion",
             AlumnoId = recuperacion.AlumnoId,
             TurnoId = recuperacion.TurnoId,
-            Fecha = DateTime.UtcNow
+            Fecha = DateTime.UtcNow,
+            FechaClase = recuperacion.Fecha
         });
 
         await _context.SaveChangesAsync();
@@ -640,14 +657,15 @@ public class InscripcionesController : ControllerBase
         if (inscripcion.Alumno != null)
             inscripcion.Alumno.ClasesPendientesRecuperar += fechas.Count;
 
-        for (var i = 0; i < fechas.Count; i++)
+        foreach (var fechaCancelada in fechas)
         {
             _context.Actividades.Add(new Actividad
             {
                 Tipo = "cancelacion",
                 AlumnoId = inscripcion.AlumnoId,
                 TurnoId = inscripcion.TurnoId,
-                Fecha = DateTime.UtcNow
+                Fecha = DateTime.UtcNow,
+                FechaClase = DateTime.SpecifyKind(fechaCancelada, DateTimeKind.Utc)
             });
         }
 
@@ -773,6 +791,7 @@ public class InscripcionesController : ControllerBase
                 a.Id,
                 a.Tipo,
                 a.Fecha,
+                a.FechaClase,
                 Alumno = a.Alumno != null ? new
                 {
                     a.Alumno.Id,
@@ -832,6 +851,7 @@ public class InscripcionesController : ControllerBase
                 a.Id,
                 a.Tipo,
                 a.Fecha,
+                a.FechaClase,
                 Turno = a.Turno != null ? new
                 {
                     a.Turno.Id,
