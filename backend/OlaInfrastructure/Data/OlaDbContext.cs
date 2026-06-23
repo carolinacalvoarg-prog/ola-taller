@@ -24,6 +24,7 @@ public class OlaDbContext : DbContext
     public DbSet<Taller> Talleres { get; set; }
     public DbSet<TurnoFecha> TurnoFechas { get; set; }
     public DbSet<TallerRecuperacionPermitida> TalleresRecuperacionPermitida { get; set; }
+    public DbSet<PrecioTaller> PreciosTaller { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -131,11 +132,25 @@ public class OlaDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Monto).HasPrecision(10, 2);
+            entity.Property(e => e.MontoCalculado).HasPrecision(10, 2);
             entity.HasOne(e => e.Alumno)
                   .WithMany(a => a.Pagos)
                   .HasForeignKey(e => e.AlumnoId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(e => new { e.AlumnoId, e.MesPago, e.AnioPago });
+            entity.HasIndex(e => new { e.AlumnoId, e.MesPago, e.AnioPago }).IsUnique();
+        });
+
+        // Configuración de PrecioTaller
+        modelBuilder.Entity<PrecioTaller>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PrecioTransferencia).HasPrecision(10, 2);
+            entity.Property(e => e.PrecioEfectivo).HasPrecision(10, 2);
+            entity.HasOne(e => e.Taller)
+                  .WithMany()
+                  .HasForeignKey(e => e.TallerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TallerId, e.VigenteDesde });
         });
 
         // Configuración de Usuario
