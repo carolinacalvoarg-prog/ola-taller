@@ -83,42 +83,50 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<OlaDbContext>();
     context.Database.Migrate();
-    // Asegurar columna FechaNacimiento en SQLite (por si la migración no se aplicó)
-    try
+
+    var isSqlite = context.Database.ProviderName?.Contains("Sqlite") == true;
+
+    if (isSqlite)
     {
-        context.Database.ExecuteSqlRaw("ALTER TABLE Alumnos ADD COLUMN FechaNacimiento TEXT;");
-        Console.WriteLine("Column FechaNacimiento added to Alumnos");
+        // Asegurar columna FechaNacimiento en SQLite (por si la migración no se aplicó)
+        try
+        {
+            context.Database.ExecuteSqlRaw("ALTER TABLE Alumnos ADD COLUMN FechaNacimiento TEXT;");
+            Console.WriteLine("Column FechaNacimiento added to Alumnos");
+        }
+        catch (Exception)
+        {
+            // Falla si la columna ya existe; ignorar.
+        }
+
+        // Crear tablas DiasSinClase y AusenciasProgramadas en SQLite si no existen
+        try
+        {
+            context.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS DiasSinClase (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Fecha TEXT NOT NULL,
+                    Motivo TEXT
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_DiasSinClase_Fecha ON DiasSinClase(Fecha);
+            ");
+            context.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS AusenciasProgramadas (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    InscripcionId INTEGER NOT NULL,
+                    Fecha TEXT NOT NULL,
+                    FOREIGN KEY (InscripcionId) REFERENCES Inscripciones(Id) ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_AusenciasProgramadas_InscripcionId_Fecha ON AusenciasProgramadas(InscripcionId, Fecha);
+            ");
+            Console.WriteLine("Tables DiasSinClase and AusenciasProgramadas ensured");
+        }
+        catch (Exception)
+        {
+            // Falla si las tablas ya existen; ignorar.
+        }
     }
-    catch (Exception)
-    {
-        // En PostgreSQL la sintaxis es distinta; en SQLite falla si la columna ya existe. Ignorar.
-    }
-    // Crear tablas DiasSinClase y AusenciasProgramadas en SQLite si no existen
-    try
-    {
-        context.Database.ExecuteSqlRaw(@"
-            CREATE TABLE IF NOT EXISTS DiasSinClase (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Fecha TEXT NOT NULL,
-                Motivo TEXT
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_DiasSinClase_Fecha ON DiasSinClase(Fecha);
-        ");
-        context.Database.ExecuteSqlRaw(@"
-            CREATE TABLE IF NOT EXISTS AusenciasProgramadas (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                InscripcionId INTEGER NOT NULL,
-                Fecha TEXT NOT NULL,
-                FOREIGN KEY (InscripcionId) REFERENCES Inscripciones(Id) ON DELETE CASCADE
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_AusenciasProgramadas_InscripcionId_Fecha ON AusenciasProgramadas(InscripcionId, Fecha);
-        ");
-        Console.WriteLine("Tables DiasSinClase and AusenciasProgramadas ensured");
-    }
-    catch (Exception)
-    {
-        // En PostgreSQL las tablas las crea la migración; en SQLite si ya existen, ignorar.
-    }
+
     Console.WriteLine("Database migrations applied");
 }
 
