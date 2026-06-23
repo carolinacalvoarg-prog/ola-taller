@@ -60,7 +60,7 @@ var allowedOriginsEnv = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
 Console.WriteLine($"ALLOWED_ORIGINS env: {allowedOriginsEnv ?? "(not set)"}");
 
 var allowedOrigins = allowedOriginsEnv?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-    ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+    ?? new[] { "http://localhost:5173", "http://localhost:3000", "https://ola-taller.vercel.app" };
 
 Console.WriteLine($"Allowed origins: {string.Join(", ", allowedOrigins)}");
 
