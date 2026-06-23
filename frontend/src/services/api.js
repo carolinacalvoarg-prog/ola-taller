@@ -98,4 +98,22 @@ export const diasSinClaseService = {
   delete: (id) => api.delete(`/diassinclase/${id}`),
 };
 
+// Servicios de Precios por Taller
+export const preciosTallerService = {
+  getActuales: () => api.get('/precios-taller'),
+  getHistorial: (tallerId) => api.get(`/precios-taller/${tallerId}/historial`),
+  setPrecio: (tallerId, precio) => api.post(`/precios-taller/${tallerId}`, precio),
+};
+
+// Servicios de Pagos / Cuotas mensuales
+export const pagosService = {
+  getPreview: (mes, anio) => api.get(`/pagos/preview/${mes}/${anio}`),
+  generar: (mes, anio) => api.post(`/pagos/generar/${mes}/${anio}`),
+  getByMes: (mes, anio) => api.get(`/pagos/${mes}/${anio}`),
+  getByAlumno: (alumnoId) => api.get(`/pagos/alumno/${alumnoId}`),
+  update: (id, data) => api.put(`/pagos/${id}`, data),
+  registrarPago: (id, data) => api.post(`/pagos/${id}/registrar-pago`, data),
+  getDeudores: () => api.get('/pagos/deudores'),
+};
+
 export default api;

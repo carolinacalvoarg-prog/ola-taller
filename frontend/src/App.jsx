@@ -10,6 +10,8 @@ import Alumnos from './pages/Alumnos';
 import AlumnoDetalle from './pages/AlumnoDetalle';
 import Turnos from './pages/Turnos';
 import Calendario from './pages/Calendario';
+import Aranceles from './pages/Aranceles';
+import Cuotas from './pages/Cuotas';
 
 function App() {
   return (
@@ -69,6 +71,18 @@ function App() {
             <Route path="calendario" element={
               <ProtectedRoute allowedRoles={['Admin', 'Alumno']}>
                 <Calendario />
+              </ProtectedRoute>
+            } />
+
+            <Route path="aranceles" element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <Aranceles />
+              </ProtectedRoute>
+            } />
+
+            <Route path="cuotas" element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <Cuotas />
               </ProtectedRoute>
             } />
           </Route>
