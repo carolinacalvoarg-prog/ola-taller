@@ -10,6 +10,7 @@ import Alumnos from './pages/Alumnos';
 import AlumnoDetalle from './pages/AlumnoDetalle';
 import Turnos from './pages/Turnos';
 import Calendario from './pages/Calendario';
+import Cobros from './pages/Cobros';
 
 function App() {
   return (
@@ -63,6 +64,12 @@ function App() {
             <Route path="turnos" element={
               <ProtectedRoute allowedRoles={['Admin']}>
                 <Turnos />
+              </ProtectedRoute>
+            } />
+
+            <Route path="cobros" element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <Cobros />
               </ProtectedRoute>
             } />
 

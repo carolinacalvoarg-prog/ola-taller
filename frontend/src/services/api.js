@@ -91,6 +91,19 @@ export const configuracionService = {
   update: (clave, valor) => api.put(`/configuracion/${clave}`, { valor }),
 };
 
+// Servicios de Pagos (aranceles y cuotas mensuales)
+export const pagosService = {
+  getTarifas: (anio, mes) => api.get(`/pagos/tarifas/${anio}/${mes}`),
+  saveTarifas: (anio, mes, tarifas) => api.put(`/pagos/tarifas/${anio}/${mes}`, tarifas),
+  generarCuotas: (anio, mes) => api.post(`/pagos/generar/${anio}/${mes}`),
+  getResumen: (anio, mes) => api.get(`/pagos/resumen/${anio}/${mes}`),
+  ajustarCuota: (id, datos) => api.put(`/pagos/${id}`, datos),
+  registrarPago: (id, pago) => api.post(`/pagos/${id}/registrar`, pago),
+  getByAlumno: (alumnoId) => api.get(`/pagos/alumno/${alumnoId}`),
+  getMensajeWhatsApp: (anio, mes) => api.get(`/pagos/mensaje/${anio}/${mes}`),
+  setPortalPagos: (alumnoId, habilitado) => api.put(`/alumnos/${alumnoId}/portal-pagos`, { habilitado }),
+};
+
 // Servicios de Días sin clase (feriados, etc.)
 export const diasSinClaseService = {
   getByMes: (anio, mes) => api.get(`/diassinclase?anio=${anio}&mes=${mes}`),

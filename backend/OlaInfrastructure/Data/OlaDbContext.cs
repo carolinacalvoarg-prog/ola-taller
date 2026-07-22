@@ -24,6 +24,7 @@ public class OlaDbContext : DbContext
     public DbSet<Taller> Talleres { get; set; }
     public DbSet<TurnoFecha> TurnoFechas { get; set; }
     public DbSet<TallerRecuperacionPermitida> TalleresRecuperacionPermitida { get; set; }
+    public DbSet<TarifaMensual> TarifasMensuales { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -136,6 +137,22 @@ public class OlaDbContext : DbContext
                   .HasForeignKey(e => e.AlumnoId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.AlumnoId, e.MesPago, e.AnioPago });
+            entity.Property(e => e.MontoEsperadoTransferencia).HasPrecision(10, 2);
+            entity.Property(e => e.MontoEsperadoEfectivo).HasPrecision(10, 2);
+            entity.Property(e => e.MontoAbonado).HasPrecision(10, 2);
+        });
+
+        // Configuración de TarifaMensual
+        modelBuilder.Entity<TarifaMensual>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ValorClaseTransferencia).HasPrecision(10, 2);
+            entity.Property(e => e.ValorClaseEfectivo).HasPrecision(10, 2);
+            entity.HasOne(e => e.Taller)
+                  .WithMany()
+                  .HasForeignKey(e => e.TallerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.Anio, e.Mes, e.TallerId }).IsUnique();
         });
 
         // Configuración de Usuario
@@ -169,7 +186,12 @@ public class OlaDbContext : DbContext
                 Clave = "HorasAnticipacionCancelacion",
                 Valor = "24",
                 Descripcion = "Horas de anticipacion minimas para cancelar una clase"
-            });
+            },
+            new ConfiguracionSistema { Id = 2, Clave = "TransferenciaTitular", Valor = "Yesica Anabela Cruz", Descripcion = "Titular de la cuenta para transferencias" },
+            new ConfiguracionSistema { Id = 3, Clave = "TransferenciaCVU", Valor = "0000003100094666029136", Descripcion = "CVU para transferencias" },
+            new ConfiguracionSistema { Id = 4, Clave = "TransferenciaAlias", Valor = "ola.ceramica", Descripcion = "Alias para transferencias" },
+            new ConfiguracionSistema { Id = 5, Clave = "TransferenciaCUIT", Valor = "27319388309", Descripcion = "CUIT/CUIL del titular" },
+            new ConfiguracionSistema { Id = 6, Clave = "TransferenciaBanco", Valor = "Mercado Pago", Descripcion = "Banco o billetera de destino" });
         });
 
         // Configuracion de Actividad

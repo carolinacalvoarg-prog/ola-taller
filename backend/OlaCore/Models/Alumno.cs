@@ -12,6 +12,8 @@ public class Alumno
     public DateTime FechaRegistro { get; set; }
     public bool Activo { get; set; }
     public int ClasesPendientesRecuperar { get; set; } = 0;
+    // Flag de rollout gradual: habilita la sección "Mi cuota" en el portal del alumno
+    public bool PortalPagosHabilitado { get; set; } = false;
     
     // Relaciones
     public ICollection<Inscripcion> Inscripciones { get; set; } = new List<Inscripcion>();

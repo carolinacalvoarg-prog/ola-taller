@@ -44,7 +44,8 @@ public class AlumnosController : ControllerBase
                 a.Notas,
                 a.FechaRegistro,
                 a.Activo,
-                a.ClasesPendientesRecuperar
+                a.ClasesPendientesRecuperar,
+                a.PortalPagosHabilitado
             })
             .FirstOrDefaultAsync();
 
@@ -91,6 +92,8 @@ public class AlumnosController : ControllerBase
         }
 
         _context.Entry(alumno).State = EntityState.Modified;
+        // El flag de portal de pagos se maneja solo por su endpoint dedicado
+        _context.Entry(alumno).Property(a => a.PortalPagosHabilitado).IsModified = false;
 
         try
         {
@@ -107,6 +110,22 @@ public class AlumnosController : ControllerBase
                 throw;
             }
         }
+
+        return NoContent();
+    }
+
+    // PUT: api/Alumnos/5/portal-pagos — flag de rollout gradual de la sección de pagos
+    [HttpPut("{id}/portal-pagos")]
+    public async Task<IActionResult> SetPortalPagos(int id, [FromBody] PortalPagosDto dto)
+    {
+        var alumno = await _context.Alumnos.FindAsync(id);
+        if (alumno == null)
+        {
+            return NotFound();
+        }
+
+        alumno.PortalPagosHabilitado = dto.Habilitado;
+        await _context.SaveChangesAsync();
 
         return NoContent();
     }
@@ -139,4 +158,9 @@ public class AlumnosController : ControllerBase
     {
         return _context.Alumnos.Any(e => e.Id == id);
     }
+}
+
+public class PortalPagosDto
+{
+    public bool Habilitado { get; set; }
 }

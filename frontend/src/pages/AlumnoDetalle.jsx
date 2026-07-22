@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { alumnosService, inscripcionesService } from '../services/api';
+import { alumnosService, inscripcionesService, pagosService } from '../services/api';
 import Card from '../components/Card';
 import Toast from '../components/Toast';
 import { colors } from '../styles/colors';
@@ -504,6 +504,30 @@ function AlumnoDetalle() {
                   <div style={{ fontSize: '0.875rem', color: colors.gray[900], fontWeight: '600' }}>
                     {alumno.clasesPendientesRecuperar ?? 0}
                   </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Portal de pagos (prueba piloto)</label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={alumno.portalPagosHabilitado || false}
+                      onChange={async (e) => {
+                        const habilitado = e.target.checked;
+                        try {
+                          await pagosService.setPortalPagos(alumno.id, habilitado);
+                          setAlumno({ ...alumno, portalPagosHabilitado: habilitado });
+                          showToast(habilitado
+                            ? 'Sección de pagos habilitada para este alumno'
+                            : 'Sección de pagos deshabilitada');
+                        } catch {
+                          showToast('Error al cambiar el acceso al portal de pagos', 'error');
+                        }
+                      }}
+                    />
+                    <span style={{ fontWeight: '600', color: alumno.portalPagosHabilitado ? colors.success : colors.gray[500] }}>
+                      {alumno.portalPagosHabilitado ? 'Habilitado' : 'Deshabilitado'}
+                    </span>
+                  </label>
                 </div>
               </div>
 

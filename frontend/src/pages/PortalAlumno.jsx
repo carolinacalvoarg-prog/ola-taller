@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Calendar, UserCheck, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Calendar, UserCheck, Clock, AlertCircle, CheckCircle, Copy } from 'lucide-react';
 import Card from '../components/Card';
 import Toast from '../components/Toast';
 import { colors } from '../styles/colors';
-import { turnosService, inscripcionesService, alumnosService, configuracionService } from '../services/api';
+import { turnosService, inscripcionesService, alumnosService, configuracionService, pagosService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 function PortalAlumno() {
@@ -17,6 +17,7 @@ function PortalAlumno() {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [cancelandoN, setCancelandoN] = useState(null);
   const [inscribiendo, setInscribiendo] = useState(null);
+  const [pagosData, setPagosData] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -43,6 +44,18 @@ function PortalAlumno() {
       setRecuperaciones(recuperacionesRes.data || []);
       setTurnos(turnosRes.data || []);
       setHorasAnticipacion(parseInt(configRes.data.valor) || 24);
+
+      // Sección de pagos: solo visible para alumnos con el flag habilitado
+      if (alumnoRes.data?.portalPagosHabilitado) {
+        try {
+          const pagosRes = await pagosService.getByAlumno(user.alumnoId);
+          setPagosData(pagosRes.data);
+        } catch (e) {
+          console.error('Error al cargar pagos:', e);
+        }
+      } else {
+        setPagosData(null);
+      }
     } catch (error) {
       console.error('Error al cargar datos:', error);
       showToast('Error al cargar los datos', 'error');
@@ -300,6 +313,100 @@ function PortalAlumno() {
                 Tus clases se reservan automaticamente en este turno
               </div>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Mi Cuota (rollout gradual por flag) */}
+      {pagosData?.habilitado && (
+        <div style={{ marginTop: '1.5rem' }}>
+          <Card title="Mi Cuota">
+            {pagosData.cuotaActual ? (() => {
+              const c = pagosData.cuotaActual;
+              const nombresMeses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+              const fm = (v) => `$${Number(v || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+              const pagada = c.estado === 'Pagado';
+              const chip = pagada
+                ? { bg: colors.success + '20', color: colors.success, texto: '✓ Al día' }
+                : c.estado === 'Parcial'
+                ? { bg: colors.warning + '20', color: colors.warning, texto: `Pago parcial · abonaste ${fm(c.montoAbonado)}` }
+                : c.vencida
+                ? { bg: colors.error + '20', color: colors.error, texto: 'Vencida' }
+                : { bg: colors.warning + '20', color: colors.warning, texto: 'Pendiente · vence el 10' };
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.8rem', color: colors.gray[500] }}>{nombresMeses[c.mesPago]} {c.anioPago}</div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: '700', color: colors.gray[900] }}>
+                        {c.esDosVecesSemana ? fm(c.montoEsperadoEfectivo) : fm(c.montoEsperadoTransferencia)}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: colors.gray[600] }}>
+                        {c.esDosVecesSemana
+                          ? 'Por venir 2 veces por semana pagás precio efectivo, incluso por transferencia.'
+                          : `${fm(c.montoEsperadoEfectivo)} si pagás en efectivo`}
+                      </div>
+                    </div>
+                    <span style={{ padding: '0.25rem 0.7rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '700', backgroundColor: chip.bg, color: chip.color }}>
+                      {chip.texto}
+                    </span>
+                  </div>
+                  {c.detalle && (
+                    <div style={{ fontSize: '0.75rem', color: colors.gray[500], whiteSpace: 'pre-line', borderTop: `1px solid ${colors.gray[100]}`, paddingTop: '0.5rem' }}>
+                      {c.detalle}
+                    </div>
+                  )}
+                  {!pagada && pagosData.datosTransferencia && (
+                    <div style={{ backgroundColor: colors.primary + '08', borderRadius: '8px', padding: '0.75rem 1rem', fontSize: '0.8rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                        <div>
+                          <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{pagosData.datosTransferencia.TransferenciaAlias}</div>
+                          <div style={{ color: colors.gray[600], fontSize: '0.72rem' }}>
+                            {pagosData.datosTransferencia.TransferenciaTitular} · {pagosData.datosTransferencia.TransferenciaBanco}
+                          </div>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(pagosData.datosTransferencia.TransferenciaAlias);
+                              showToast('Alias copiado');
+                            } catch { showToast('No se pudo copiar', 'error'); }
+                          }}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                            padding: '0.35rem 0.6rem', backgroundColor: colors.primary + '20',
+                            color: colors.primaryDark, border: 'none', borderRadius: '6px',
+                            cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700'
+                          }}
+                        >
+                          <Copy size={12} /> Copiar alias
+                        </button>
+                      </div>
+                      <div style={{ color: colors.gray[500], fontSize: '0.7rem', marginTop: '0.5rem' }}>
+                        Después de transferir, enviá el comprobante por WhatsApp.
+                      </div>
+                    </div>
+                  )}
+                  {(pagosData.historial || []).length > 0 && (
+                    <div style={{ borderTop: `1px solid ${colors.gray[100]}`, paddingTop: '0.5rem' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: colors.gray[400], marginBottom: '0.4rem' }}>Historial</div>
+                      {pagosData.historial.slice(0, 6).map(h => (
+                        <div key={`${h.anioPago}-${h.mesPago}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.25rem 0' }}>
+                          <span>{nombresMeses[h.mesPago]} {h.anioPago}</span>
+                          <span style={{ fontWeight: '600', color: h.estado === 'Pagado' ? colors.success : colors.error }}>
+                            {h.estado === 'Pagado' ? '✓ Pagada' : h.estado === 'Parcial' ? 'Parcial' : 'Impaga'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })() : (
+              <div style={{ textAlign: 'center', padding: '1rem', color: colors.gray[500], fontSize: '0.875rem' }}>
+                Tu cuota de este mes todavía no está disponible.
+              </div>
+            )}
           </Card>
         </div>
       )}
