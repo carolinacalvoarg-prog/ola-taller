@@ -12,8 +12,10 @@ Ola Taller is a class management system for art/yoga/group workshops. It manages
 ```bash
 cd backend/OlaAPI
 dotnet restore                    # install dependencies
-dotnet run --urls="http://localhost:5001"  # run dev server
+dotnet run                        # run dev server at http://localhost:5001 (port set in Properties/launchSettings.json)
 ```
+
+Local dev requires `backend/OlaAPI/appsettings.Development.json` (gitignored) with `ConnectionStrings:PostgresConnection` pointing to the **staging** Supabase database (Session pooler URI). There is no local database.
 
 ### Frontend (React 18 + Vite)
 ```bash
@@ -44,7 +46,7 @@ dotnet ef database update --project ../OlaInfrastructure
 - **OlaCore/** — Domain models only (C# classes in `Models/`). No logic or dependencies.
 - **OlaInfrastructure/** — Entity Framework Core DbContext (`OlaDbContext`) and migrations.
 
-Database: SQLite in dev (`olataller.db`), PostgreSQL in production (via `DATABASE_URL` env var). The switch is automatic in `Program.cs`.
+Database: PostgreSQL (Supabase) always — SQLite was removed in July 2026 and the old SQLite-flavored migrations were squashed into a single `InitialPostgres` migration. Connection resolution in `Program.cs`: `DATABASE_URL` env var (deploys) → `ConnectionStrings:PostgresConnection` in appsettings (local dev, pointing to the staging Supabase project). Migrations auto-apply on startup. Npgsql maps `DateTime` to `timestamp with time zone`, which only accepts `DateTimeKind.Utc` — any `DateTime` coming from a request body/query param must be normalized with `DateTime.SpecifyKind(x, DateTimeKind.Utc)` before using it in a query or saving it.
 
 ### Frontend — React SPA (`frontend/`)
 - **Pages** (`src/pages/`): Login, PortalAlumno, PortalProfesor, Calendario, Administracion, Alumnos, AlumnoDetalle, Turnos
@@ -72,8 +74,7 @@ Styling is inline CSS with a color palette defined in `src/styles/colors.js` (pr
 - **No DTOs**: Controllers return inline anonymous objects via `.Select(x => new { ... })`. There is no separate DTO layer.
 - **No auth middleware**: Login (`POST /api/auth/login`) returns a plain user object (id, email, rol, alumnoId/profesorId) that the frontend stores in localStorage. API endpoints have no `[Authorize]` attribute — authorization is handled client-side only.
 - **Password hashing**: SHA-256, no salt. See `AuthController.cs`.
-- **SQLite quirk**: `ORDER BY` on `TimeSpan` fields (e.g. `HoraInicio`) fails in SQLite — always sort in memory after fetching.
-- **SQLite quirk**: Nested collection projections inside `.Select()` (e.g. `t.FechasManuales.Select(...).ToList()`) return empty arrays in SQLite. Work around by loading child collections in a separate query and joining in memory with a dictionary keyed by parent ID.
+- **No entity serialization**: endpoints must project to anonymous objects (`.Select(x => new { ... })`) — returning tracked entities with navigations causes JSON cycle errors.
 
 ### Environment Variables
 - Backend: `DATABASE_URL` (PostgreSQL connection string), `ALLOWED_ORIGINS` (CORS), `ASPNETCORE_ENVIRONMENT`

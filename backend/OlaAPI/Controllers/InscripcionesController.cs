@@ -626,7 +626,7 @@ public class InscripcionesController : ControllerBase
         if (dto.Fecha.HasValue)
         {
             // Cancelar una fecha específica
-            var fechaEspecifica = dto.Fecha.Value.Date;
+            var fechaEspecifica = DateTime.SpecifyKind(dto.Fecha.Value.Date, DateTimeKind.Utc);
             if (fechaEspecifica < hoy)
                 return BadRequest("No se puede cancelar una fecha pasada.");
 
@@ -833,13 +833,14 @@ public class InscripcionesController : ControllerBase
         // Filtro por fecha desde
         if (fechaDesde.HasValue)
         {
-            query = query.Where(a => a.Fecha >= fechaDesde.Value);
+            var fechaDesdeUtc = DateTime.SpecifyKind(fechaDesde.Value, DateTimeKind.Utc);
+            query = query.Where(a => a.Fecha >= fechaDesdeUtc);
         }
 
         // Filtro por fecha hasta
         if (fechaHasta.HasValue)
         {
-            var fechaHastaFin = fechaHasta.Value.Date.AddDays(1);
+            var fechaHastaFin = DateTime.SpecifyKind(fechaHasta.Value.Date.AddDays(1), DateTimeKind.Utc);
             query = query.Where(a => a.Fecha < fechaHastaFin);
         }
 

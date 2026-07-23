@@ -10,7 +10,7 @@ public class Asistencia
     public string? Observaciones { get; set; }
     public DateTime FechaRegistro { get; set; }
     
-    // Relaciones
-    public Alumno Alumno { get; set; } = null!;
-    public Turno Turno { get; set; } = null!;
+    // Relaciones (nullables para que la validación de modelo no las exija al bindear el body)
+    public Alumno? Alumno { get; set; }
+    public Turno? Turno { get; set; }
 }

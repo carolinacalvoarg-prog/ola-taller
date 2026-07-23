@@ -21,6 +21,7 @@ public class AsistenciasController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Asistencia>> PostAsistencia(Asistencia asistencia)
     {
+        asistencia.Fecha = DateTime.SpecifyKind(asistencia.Fecha.Date, DateTimeKind.Utc);
         asistencia.FechaRegistro = DateTime.UtcNow;
 
         _context.Asistencias.Add(asistencia);
@@ -35,6 +36,8 @@ public class AsistenciasController : ControllerBase
     {
         foreach (var asistencia in asistencias)
         {
+            asistencia.Fecha = DateTime.SpecifyKind(asistencia.Fecha.Date, DateTimeKind.Utc);
+
             // Verificar si ya existe una asistencia para este alumno, turno y fecha
             var existente = await _context.Asistencias
                 .FirstOrDefaultAsync(a => a.AlumnoId == asistencia.AlumnoId &&
@@ -72,12 +75,21 @@ public class AsistenciasController : ControllerBase
 
     // GET: api/Asistencias/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Asistencia>> GetAsistencia(int id)
+    public async Task<ActionResult<object>> GetAsistencia(int id)
     {
         var asistencia = await _context.Asistencias
-            .Include(a => a.Alumno)
-            .Include(a => a.Turno)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .Where(a => a.Id == id)
+            .Select(a => new
+            {
+                a.Id,
+                a.AlumnoId,
+                a.TurnoId,
+                a.Fecha,
+                a.Presente,
+                a.Observaciones,
+                a.FechaRegistro
+            })
+            .FirstOrDefaultAsync();
 
         if (asistencia == null)
         {
@@ -93,9 +105,19 @@ public class AsistenciasController : ControllerBase
         int turnoId, 
         [FromQuery] DateTime fecha)
     {
+        var fechaUtc = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
         var asistencias = await _context.Asistencias
-            .Include(a => a.Alumno)
-            .Where(a => a.TurnoId == turnoId && a.Fecha.Date == fecha.Date)
+            .Where(a => a.TurnoId == turnoId && a.Fecha.Date == fechaUtc)
+            .Select(a => new
+            {
+                a.Id,
+                a.AlumnoId,
+                a.TurnoId,
+                a.Fecha,
+                a.Presente,
+                a.Observaciones,
+                Alumno = a.Alumno != null ? new { a.Alumno.Id, a.Alumno.Nombre, a.Alumno.Apellido } : null
+            })
             .ToListAsync();
 
         return Ok(asistencias);
@@ -106,9 +128,18 @@ public class AsistenciasController : ControllerBase
     public async Task<ActionResult<IEnumerable<Asistencia>>> GetAsistenciasByAlumno(int alumnoId)
     {
         var asistencias = await _context.Asistencias
-            .Include(a => a.Turno)
             .Where(a => a.AlumnoId == alumnoId)
             .OrderByDescending(a => a.Fecha)
+            .Select(a => new
+            {
+                a.Id,
+                a.AlumnoId,
+                a.TurnoId,
+                a.Fecha,
+                a.Presente,
+                a.Observaciones,
+                Turno = a.Turno != null ? new { a.Turno.Id, a.Turno.DiaSemana, a.Turno.HoraInicio, a.Turno.HoraFin } : null
+            })
             .ToListAsync();
 
         return Ok(asistencias);
@@ -144,7 +175,7 @@ public class AsistenciasController : ControllerBase
     [HttpGet("historial/turno/{turnoId}")]
     public async Task<ActionResult<IEnumerable<object>>> GetHistorialAsistenciasByTurno(int turnoId)
     {
-        var unMesAtras = TimeHelper.AhoraArgentina().AddMonths(-1);
+        var unMesAtras = DateTime.SpecifyKind(TimeHelper.AhoraArgentina().AddMonths(-1), DateTimeKind.Utc);
 
         var historial = await _context.Asistencias
             .Where(a => a.TurnoId == turnoId && a.Fecha >= unMesAtras)

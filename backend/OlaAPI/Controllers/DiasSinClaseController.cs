@@ -36,7 +36,7 @@ public class DiasSinClaseController : ControllerBase
     [HttpGet("verificar")]
     public async Task<ActionResult<bool>> EsDiaSinClase([FromQuery] DateTime fecha)
     {
-        var fechaDate = fecha.Date;
+        var fechaDate = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
         var existe = await _context.DiasSinClase
             .AnyAsync(d => d.Fecha.Date == fechaDate);
         return Ok(existe);

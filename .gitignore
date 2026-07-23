@@ -26,3 +26,8 @@ Thumbs.db
 
 # Backups
 backups/
+
+# SQLite legacy (ya no se usa)
+**/*.db
+**/*.db-wal
+**/*.db-shm

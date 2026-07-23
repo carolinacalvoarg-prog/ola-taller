@@ -5,49 +5,37 @@ using OlaCore.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuración de la base de datos
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+// Configuración de la base de datos: siempre PostgreSQL.
+// Prioridad: 1) DATABASE_URL (env, deploy), 2) PostgresConnection (appsettings.Development.json, local)
+static string ToNpgsqlConnectionString(string value)
+{
+    if (!value.StartsWith("postgres://") && !value.StartsWith("postgresql://"))
+        return value;
+    var uri = new Uri(value);
+    var userInfo = uri.UserInfo.Split(':');
+    return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={Uri.UnescapeDataString(userInfo[0])};Password={Uri.UnescapeDataString(userInfo[1])};SSL Mode=Require;Trust Server Certificate=true";
+}
 
-// Prioridad: 1) DATABASE_URL (env), 2) PostgresConnection (appsettings), 3) SQLite
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 var postgresConnString = builder.Configuration.GetConnectionString("PostgresConnection");
 
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    // Producción: PostgreSQL via variable de entorno
-    var connStr = databaseUrl;
-    if (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://"))
-    {
-        var uri = new Uri(databaseUrl);
-        var userInfo = uri.UserInfo.Split(':');
-        connStr = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-    }
-
     builder.Services.AddDbContext<OlaDbContext>(options =>
-        options.UseNpgsql(connStr));
+        options.UseNpgsql(ToNpgsqlConnectionString(databaseUrl)));
     Console.WriteLine("Using PostgreSQL database (DATABASE_URL)");
 }
 else if (!string.IsNullOrEmpty(postgresConnString))
 {
-    // Desarrollo local con PostgreSQL (appsettings.json)
-    var connStr = postgresConnString;
-    if (postgresConnString.StartsWith("postgres://") || postgresConnString.StartsWith("postgresql://"))
-    {
-        var uri = new Uri(postgresConnString);
-        var userInfo = uri.UserInfo.Split(':');
-        connStr = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-    }
-
     builder.Services.AddDbContext<OlaDbContext>(options =>
-        options.UseNpgsql(connStr));
+        options.UseNpgsql(ToNpgsqlConnectionString(postgresConnString)));
     Console.WriteLine("Using PostgreSQL database (appsettings)");
 }
 else
 {
-    // Desarrollo: SQLite local
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    builder.Services.AddDbContext<OlaDbContext>(options =>
-        options.UseSqlite(connectionString));
-    Console.WriteLine("Using SQLite database");
+    throw new InvalidOperationException(
+        "No hay conexión a la base de datos configurada. Definí DATABASE_URL (deploy) " +
+        "o ConnectionStrings:PostgresConnection en appsettings.Development.json (local).");
 }
 
 // Add services to the container.
@@ -83,42 +71,6 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<OlaDbContext>();
     context.Database.Migrate();
-    // Asegurar columna FechaNacimiento en SQLite (por si la migración no se aplicó)
-    try
-    {
-        context.Database.ExecuteSqlRaw("ALTER TABLE Alumnos ADD COLUMN FechaNacimiento TEXT;");
-        Console.WriteLine("Column FechaNacimiento added to Alumnos");
-    }
-    catch (Exception)
-    {
-        // En PostgreSQL la sintaxis es distinta; en SQLite falla si la columna ya existe. Ignorar.
-    }
-    // Crear tablas DiasSinClase y AusenciasProgramadas en SQLite si no existen
-    try
-    {
-        context.Database.ExecuteSqlRaw(@"
-            CREATE TABLE IF NOT EXISTS DiasSinClase (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Fecha TEXT NOT NULL,
-                Motivo TEXT
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_DiasSinClase_Fecha ON DiasSinClase(Fecha);
-        ");
-        context.Database.ExecuteSqlRaw(@"
-            CREATE TABLE IF NOT EXISTS AusenciasProgramadas (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                InscripcionId INTEGER NOT NULL,
-                Fecha TEXT NOT NULL,
-                FOREIGN KEY (InscripcionId) REFERENCES Inscripciones(Id) ON DELETE CASCADE
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS IX_AusenciasProgramadas_InscripcionId_Fecha ON AusenciasProgramadas(InscripcionId, Fecha);
-        ");
-        Console.WriteLine("Tables DiasSinClase and AusenciasProgramadas ensured");
-    }
-    catch (Exception)
-    {
-        // En PostgreSQL las tablas las crea la migración; en SQLite si ya existen, ignorar.
-    }
     Console.WriteLine("Database migrations applied");
 }
 
