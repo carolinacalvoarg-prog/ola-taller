@@ -26,5 +26,12 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
+# El límite de inotify del host (128 instancias) es compartido entre contenedores
+# y suele estar agotado. Sin esto, el watcher que recarga appsettings.json en
+# caliente falla al arrancar y el proceso muere (Render lo reporta como exit 139).
+# En un contenedor la configuración no cambia en runtime, así que no hace falta.
+ENV DOTNET_hostBuilder__reloadConfigOnChange=false
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+
 # Run the app
 ENTRYPOINT ["dotnet", "OlaAPI.dll"]
