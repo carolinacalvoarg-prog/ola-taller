@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OlaCore.Models;
 using OlaInfrastructure.Data;
 using OlaAPI.Helpers;
+using System.Globalization;
 using System.Text;
 
 namespace OlaAPI.Controllers;
@@ -36,6 +37,10 @@ public class PagosController : ControllerBase
 {
     private readonly OlaDbContext _context;
     private static readonly string[] NombresDias = { "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" };
+    // El contenedor corre con cultura invariante, que formatea 95000 como "95,000".
+    // Los montos se muestran siempre con la convención argentina: "95.000".
+    private static readonly CultureInfo CulturaArgentina = CultureInfo.GetCultureInfo("es-AR");
+
     private static readonly string[] NombresMeses = { "", "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE" };
 
     public PagosController(OlaDbContext context)
@@ -511,9 +516,12 @@ public class PagosController : ControllerBase
         var turnos = await _context.Turnos.Where(t => t.Activo).ToListAsync();
         var diasSinClase = await GetDiasSinClaseDelMesAsync(anio, mes);
 
-        // Agrupar turnos por (taller, cantidad de clases) como en los mensajes que manda la admin
-        var grupos = new List<(string TallerNombre, int? TallerId, int Clases, List<string> Dias)>();
-        foreach (var turno in turnos)
+        // Agrupar turnos por (taller, cantidad de clases) como en los mensajes que manda la admin.
+        // Se recorren en orden de día de semana (lunes primero) para que los días salgan
+        // ordenados dentro de cada línea: "LUNES, MARTES Y JUEVES", no en orden de base.
+        static int OrdenDia(DayOfWeek d) => ((int)d + 6) % 7; // lunes=0 ... domingo=6
+        var grupos = new List<(string TallerNombre, int? TallerId, int Clases, int OrdenPrimerDia, List<string> Dias)>();
+        foreach (var turno in turnos.OrderBy(t => OrdenDia(t.DiaSemana)).ThenBy(t => t.HoraInicio))
         {
             var clases = await ContarClasesDelMesAsync(turno, anio, mes, null, diasSinClase);
             if (clases == 0) continue;
@@ -529,7 +537,7 @@ public class PagosController : ControllerBase
             }
             else
             {
-                grupos.Add((nombre, turno.TallerId, clases, new List<string> { dia }));
+                grupos.Add((nombre, turno.TallerId, clases, OrdenDia(turno.DiaSemana), new List<string> { dia }));
             }
         }
 
@@ -541,13 +549,13 @@ public class PagosController : ControllerBase
         sb.AppendLine($"Hola! Les compartimos el arancel de {NombresMeses[mes]} 🫶🏽");
         sb.AppendLine();
         sb.AppendLine("*Valores* 👇🏼");
-        foreach (var g in grupos.OrderBy(g => g.TallerNombre).ThenBy(g => g.Clases))
+        foreach (var g in grupos.OrderBy(g => g.TallerNombre).ThenBy(g => g.OrdenPrimerDia))
         {
             var tarifa = tarifas.First(t => t.TallerId == g.TallerId);
             var totalTransf = g.Clases * tarifa.ValorClaseTransferencia;
             var totalEfec = g.Clases * tarifa.ValorClaseEfectivo;
             var dias = string.Join(" Y ", new[] { string.Join(", ", g.Dias.Take(g.Dias.Count - 1)), g.Dias.Last() }.Where(s => s != ""));
-            sb.AppendLine($"🌿 *{g.TallerNombre} — {dias} ({g.Clases} clases): ${totalTransf:N0} TRANS / ${totalEfec:N0} EFECTIVO*");
+            sb.AppendLine($"🌿 *{g.TallerNombre} — {dias} ({g.Clases} clases): ${totalTransf.ToString("N0", CulturaArgentina)} TRANS / ${totalEfec.ToString("N0", CulturaArgentina)} EFECTIVO*");
         }
         sb.AppendLine();
         sb.AppendLine("*Importante quienes vengan al taller dos veces x semana*");
